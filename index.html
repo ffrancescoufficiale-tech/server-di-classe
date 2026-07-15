@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server di Classe - Chat</title>
+    <style>
+        /* Stile scuro ispirato ad Arch/Nord Theme */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e2e;
+            color: #cdd6f4;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            color: #89b4fa;
+            margin-bottom: 10px;
+        }
+
+        /* Container principale */
+        .chat-container {
+            width: 100%;
+            max-width: 600px;
+            background-color: #181825;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex-grow: 1;
+            margin-bottom: 20px;
+        }
+
+        /* Area dei messaggi */
+        #box-messaggi {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Stile dei singoli messaggi */
+        .messaggio {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        /* Messaggi inviati da me */
+        .mio {
+            background-color: #89b4fa;
+            color: #11111b;
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+
+        /* Messaggi inviati dagli altri */
+        .altro {
+            background-color: #313244;
+            color: #cdd6f4;
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+
+        /* Stile per i vecchi messaggi caricati dal database */
+        .storico {
+            opacity: 0.6; /* Leggermente trasparente per distinguerli da quelli in tempo reale */
+        }
+
+        .mittente {
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .testo {
+            font-size: 0.95rem;
+        }
+
+        /* Area di input in basso */
+        .input-area {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            background-color: #11111b;
+            border-top: 1px solid #313244;
+        }
+
+        #nicknameInput {
+            width: 100px;
+            padding: 12px;
+            background-color: #313244;
+            border: 1px solid #45475a;
+            border-radius: 6px;
+            color: #cdd6f4;
+            font-weight: bold;
+        }
+
+        #messageInput {
+            flex-grow: 1;
+            padding: 12px;
+            background-color: #313244;
+            border: 1px solid #45475a;
+            border-radius: 6px;
+            color: #cdd6f4;
+            outline: none;
+        }
+
+        #messageInput:focus {
+            border-color: #89b4fa;
+        }
+
+        button {
+            padding: 12px 20px;
+            background-color: #89b4fa;
+            color: #11111b;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #b4befe;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Server di Classe</h1>
+    
+    <div class="chat-container">
+        <div id="box-messaggi"></div>
+
+        <div class="input-area">
+            <input type="text" id="nicknameInput" value="User" placeholder="Nick">
+            <input type="text" id="messageInput" placeholder="Scrivi un messaggio..." autocomplete="off">
+            <button onclick="inviaMessaggio()">Invia</button>
+        </div>
+    </div>
+
+    <script>
+        let tokenUtente = localStorage.getItem('token_chat_classe');
+if (!tokenUtente) {
+    tokenUtente = 'usr_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    localStorage.setItem('token_chat_classe', tokenUtente);
+}
+
+const socket = new WebSocket('ws://localhost:3000/ws');
+
+const boxMessaggi = document.getElementById('box-messaggi');
+const messageInput = document.getElementById('messageInput');
+const nicknameInput = document.getElementById('nicknameInput');
+
+const ultimoNick = localStorage.getItem('ultimo_nick');
+if (ultimoNick) {
+    nicknameInput.value = ultimoNick;
+}
+
+socket.onmessage = function(event) {
+    const dati = JSON.parse(event.data);
+    
+    // Gestione degli stati di sicurezza inviati dal server
+    if (dati.stato === "RICHIEDI_CREAZIONE_PIN") {
+        const pin = prompt("Questo nickname è nuovo! Inserisci un PIN di 4 cifre per proteggerlo:");
+        if (pin) {
+            socket.send(JSON.stringify({
+                azione: "registra_pin",
+                mittente: nicknameInput.value.trim(),
+                token: tokenUtente,
+                pin: pin
+            }));
+        }
+        return;
+    }
+
+    if (dati.stato === "RICHIEDI_SBLOCCO_PIN") {
+        const pin = prompt("Questo nickname è protetto da PIN. Inserisci il PIN per sbloccarlo su questo dispositivo:");
+        if (pin) {
+            socket.send(JSON.stringify({
+                azione: "verifica_pin",
+                mittente: nicknameInput.value.trim(),
+                token: tokenUtente,
+                pin: pin
+            }));
+        } else {
+            alert("Accesso rifiutato. Scegli un altro nickname.");
+            nicknameInput.value = "User_" + Math.floor(Math.random() * 1000);
+        }
+        return;
+    }
+
+    if (dati.stato === "REGISTRATO" || dati.stato === "SBLOCCATO") {
+        alert(dati.info);
+        return;
+    }
+
+    if (dati.stato === "ERRORE_PIN") {
+        alert(dati.info);
+        return;
+    }
+    
+    // Se è un messaggio normale, lo mostriamo
+    if (dati.mittente && dati.contenuto) {
+        mostraMessaggio(dati.mittente, dati.contenuto, dati.storico);
+    }
+};
+
+function mostraMessaggio(mittente, contenuto, storico) {
+    const divMessaggio = document.createElement('div');
+    const mioNick = nicknameInput.value.trim();
+    
+    if (mittente === mioNick) {
+        divMessaggio.className = 'messaggio mio';
+    } else {
+        divMessaggio.className = 'messaggio altro';
+    }
+
+    if (storico) {
+        divMessaggio.classList.add('storico');
+    }
+
+    divMessaggio.innerHTML = `
+        <span class="mittente">${mittente}</span>
+        <span class="testo">${contenuto}</span>
+    `;
+
+    boxMessaggi.appendChild(divMessaggio);
+    boxMessaggi.scrollTop = boxMessaggi.scrollHeight;
+}
+
+function inviaMessaggio() {
+    const testo = messageInput.value.trim();
+    const nick = nicknameInput.value.trim() || "Anonimo";
+
+    if (testo !== "") {
+        localStorage.setItem('ultimo_nick', nick);
+
+        const payload = {
+            azione: "messaggio",
+            mittente: nick,
+            contenuto: testo,
+            token: tokenUtente
+        };
+
+        socket.send(JSON.stringify(payload));
+        messageInput.value = "";
+    }
+}
+
+messageInput.addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+        inviaMessaggio();
+    }
+});
+    </script>
+</body>
+</html>
