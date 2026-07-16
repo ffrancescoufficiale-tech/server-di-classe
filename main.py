@@ -2,7 +2,9 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 import json
-
+import os
+from fastapi import File, UploadFile, Form
+from fastapi.staticfiles import StaticFiles
 from database import inizializza_db, SessionLocal, MessaggioDB, UtenteDB, cifra_pin
 
 app = FastAPI()
@@ -17,7 +19,65 @@ app.add_middleware(
 )
 
 connessioni_attive: List[WebSocket] = []
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+# 2. Diciamo a FastAPI di rendere accessibile la cartella "uploads" via browser
+# Chiunque vada su http://localhost:3000/uploads/nomefile.pdf potrà scaricarlo!
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
+# Per ora usiamo una lista temporanea in memoria per i test degli appunti
+# (poi la collegheremo al database!)
+# Lista temporanea che ora tiene traccia anche del tipo di appunto
+bacheca_appunti = []
+
+# Il tuo PIN da "Dio Informatico" (cambialo con quello che usi davvero!)
+PIN_DIO_INFORMATICO = "1234" 
+
+@app.post("/upload-appunti")
+async def carica_appunto(
+    titolo: str = Form(...),
+    materia: str = Form(...),
+    autore: str = Form(...),
+    tipo: str = Form(...), # "dio" o "normale"
+    pin: str = Form(None), # Il PIN passato dal frontend (opzionale per i normali)
+    file: UploadFile = File(...)
+):
+    if not file.filename:
+        return {"stato": "ERRORE", "messaggio": "Nessun file valido caricato."}
+
+    # Blocco di sicurezza: se il tipo è "dio", serve il PIN corretto
+    if tipo == "dio":
+        if pin != PIN_DIO_INFORMATICO:
+            return {"stato": "ERRORE", "messaggio": "Non sei il Dio Informatico! Accesso negato. ⚡"}
+        # Forza l'autore a essere il tuo nome reale per evitare impersonificazioni
+        autore = "Dio Informatico"
+
+    try:
+        percorso_file = os.path.join(UPLOAD_DIR, file.filename)
+        
+        with open(percorso_file, "wb") as buffer:
+            contenuto = await file.read()
+            buffer.write(contenuto)
+            
+        nuovo_appunto = {
+            "id": len(bacheca_appunti) + 1,
+            "titolo": titolo,
+            "materia": materia,
+            "autore": autore,
+            "tipo": tipo, # Salviamo se è "dio" o "normale"
+            "file_url": f"http://localhost:3000/uploads/{file.filename}"
+        }
+        
+        bacheca_appunti.append(nuovo_appunto)
+        return {"stato": "OK", "messaggio": "Appunto caricato con successo!", "appunto": nuovo_appunto}
+        
+    except Exception as e:
+        return {"stato": "ERRORE", "messaggio": f"Errore: {str(e)}"}
+@app.get("/lista-appunti")
+async def ottieni_appunti():
+    # Restituisce la lista di tutti gli appunti caricati
+    return bacheca_appunti
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
@@ -108,3 +168,41 @@ async def websocket_endpoint(websocket: WebSocket):
                     
     except WebSocketDisconnect:
         connessioni_attive.remove(websocket)
+
+
+
+# Lista temporanea in memoria per il calendario della classe
+calendario_classe = []
+
+# Il tuo PIN da "Dio Informatico" (assicurati che coincida con quello che usi per gli appunti!)
+PIN_DIO_INFORMATICO = "1234" 
+
+@app.post("/aggiungi-evento")
+async def aggiungi_evento(
+    titolo: str = Form(...),       # Es. "Compito in classe di Informatica"
+    materia: str = Form(...),      # Es. "Informatica"
+    data: str = Form(...),         # Data in formato YYYY-MM-DD
+    tipo: str = Form(...),         # "verifica", "interrogazione", "compito"
+    pin: str = Form(...)           # PIN di sicurezza obbligatorio
+):
+    if pin != PIN_DIO_INFORMATICO:
+        return {"stato": "ERRORE", "messaggio": "Non hai i permessi per modificare il calendario! 🔐"}
+        
+    nuovo_evento = {
+        "id": len(calendario_classe) + 1,
+        "titolo": titolo,
+        "materia": materia,
+        "data": data,
+        "tipo": tipo
+    }
+    
+    calendario_classe.append(nuovo_evento)
+    
+    # Ordiniamo la lista per data, così i compiti più vicini appaiono sempre per primi!
+    calendario_classe.sort(key=lambda x: x['data'])
+    
+    return {"stato": "OK", "messaggio": "Evento aggiunto al calendario!", "evento": nuovo_evento}
+
+@app.get("/lista-eventi")
+async def ottieni_eventi():
+    return calendario_classe

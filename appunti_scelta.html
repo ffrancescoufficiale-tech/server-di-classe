@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scegli Sezione Appunti</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #1e1e2e;
+            color: #cdd6f4;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        h1 { color: #f9e2af; margin-bottom: 30px; }
+        .back-link { color: #89b4fa; text-decoration: none; margin-bottom: 25px; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 700px;
+        }
+        .card {
+            background-color: #181825;
+            border: 1px solid #313244;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            text-decoration: none;
+            color: #cdd6f4;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: #f9e2af;
+            box-shadow: 0 8px 24px rgba(249, 226, 175, 0.15);
+        }
+        .card-icon { font-size: 3.5rem; margin-bottom: 15px; }
+        .card-title { font-size: 1.4rem; font-weight: bold; color: #f9e2af; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">← Torna alla Dashboard</a>
+    <h1>📚 Sezioni Appunti</h1>
+    <div class="grid">
+        <a href="appunti_dio.html" class="card" style="border-color: #cba6f7;">
+            <div class="card-icon">⚡</div>
+            <div class="card-title" style="color: #cba6f7;">Appunti del Dio Informatico</div>
+            <p style="color: #a6adc8; font-size: 0.9rem;">I riassunti ufficiali e intoccabili creati da Francesco.</p>
+        </a>
+
+        <a href="appunti_normali_scelta.html" class="card">
+            <div class="card-icon">👥</div>
+            <div class="card-title">Appunti Comuni</div>
+            <p style="color: #a6adc8; font-size: 0.9rem;">La bacheca condivisa dove tutti possono collaborare.</p>
+        </a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carica Appunto Comune</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif; background-color: #1e1e2e; color: #cdd6f4;
+            margin: 0; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; box-sizing: border-box;
+        }
+        h1 { color: #89b4fa; margin-bottom: 25px; }
+        .back-link { color: #89b4fa; text-decoration: none; margin-bottom: 25px; }
+        .upload-box { background-color: #181825; border: 1px solid #313244; border-radius: 12px; padding: 25px; width: 100%; max-width: 500px; }
+        .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+        input, select { padding: 10px; background-color: #313244; border: 1px solid #45475a; border-radius: 6px; color: #cdd6f4; outline: none; }
+        input:focus { border-color: #89b4fa; }
+        button {
+            width: 100%; padding: 12px; background-color: #89b4fa; color: #11111b;
+            border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s;
+        }
+        button:hover { background-color: #b4befe; }
+    </style>
+</head>
+<body>
+    <a href="appunti_normali_scelta.html" class="back-link">← Torna a Opzioni</a>
+    <h1>📤 Condividi un Appunto</h1>
+    
+    <div class="upload-box">
+        <form id="formNormale">
+            <div class="form-group">
+                <label>Titolo del Documento</label>
+                <input type="text" id="titolo" placeholder="Es. Riassunto capitolo 2 di Storia" required>
+            </div>
+            <div class="form-group">
+                <label>Materia</label>
+                <select id="materia" required>
+                    <option value="Storia">Storia</option>
+                    <option value="Matematica">Matematica</option>
+                    <option value="Italiano">Italiano</option>
+                    <option value="Inglese">Inglese</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Seleziona File (PDF, Word, Immagine...)</label>
+                <input type="file" id="file" required>
+            </div>
+            <button type="submit">CARICA SULLA BACHECA COMUNE</button>
+        </form>
+    </div>
+
+    <script>
+        const nickUtente = localStorage.getItem('ultimo_nick') || "Compagno Anonimo";
+
+        document.getElementById('formNormale').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('titolo', document.getElementById('titolo').value);
+            formData.append('materia', document.getElementById('materia').value);
+            formData.append('autore', nickUtente);
+            formData.append('tipo', 'normale'); // Indica que es público
+            formData.append('file', document.getElementById('file').files[0]);
+
+            try {
+                const risp = await fetch('http://localhost:3000/upload-appunti', { method: 'POST', body: formData });
+                const dati = await risp.json();
+                if(dati.stato === "OK") {
+                    alert("Appunto condiviso con la classe!");
+                    window.location.href = "appunti_normali_scelta.html"; // Redirige al menú de opciones
+                } else {
+                    alert(dati.messaggio);
+                }
+            } catch {
+                alert("Errore di connessione con il server.");
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usa Appunti Comuni</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif; background-color: #1e1e2e; color: #cdd6f4;
+            margin: 0; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; box-sizing: border-box;
+        }
+        h1 { color: #89b4fa; margin-bottom: 5px; }
+        .back-link { color: #89b4fa; text-decoration: none; margin-bottom: 25px; }
+        .container { width: 100%; max-width: 650px; margin-top: 20px; }
+        .appunti-list { display: flex; flex-direction: column; gap: 15px; }
+        .appunto-card {
+            background-color: #181825; border: 1px solid #313244; border-radius: 8px;
+            padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .meta { font-size: 0.85rem; color: #a6adc8; }
+        .download-btn {
+            background-color: #313244; color: #cdd6f4; padding: 8px 15px; border-radius: 6px;
+            text-decoration: none; font-size: 0.9rem; font-weight: bold; border: 1px solid #45475a; transition: 0.2s;
+        }
+        .download-btn:hover { background-color: #89b4fa; color: #11111b; border-color: #89b4fa; }
+    </style>
+</head>
+<body>
+    <a href="appunti_normali_scelta.html" class="back-link">← Torna a Opzioni</a>
+    <h1>📥 Archivio Appunti della Classe</h1>
+    <p style="color: #a6adc8; margin-bottom: 20px;">Sfoglia i file condivisi dai tuoi compagni.</p>
+
+    <div class="container">
+        <div class="appunti-list" id="listaCondivisa">
+            </div>
+    </div>
+
+    <script>
+        async function caricaLista() {
+            const risp = await fetch('http://localhost:3000/lista-appunti');
+            const tutti = await risp.json();
+            const container = document.getElementById('listaCondivisa');
+            container.innerHTML = '';
+
+            // FILTRO: Solo aquellos de tipo "normale"
+            const normali = tutti.filter(a => a.tipo === 'normale');
+
+            if(normali.length === 0) {
+                container.innerHTML = '<p style="color: #a6adc8; text-align: center;">Nessun compagno ha ancora condiviso file. Inizia tu!</p>';
+                return;
+            }
+
+            normali.forEach(a => {
+                const card = document.createElement('div');
+                card.className = 'appunto-card';
+                card.innerHTML = `
+                    <div>
+                        <h4 style="margin:0 0 5px 0; color:#89b4fa;">${a.titolo}</h4>
+                        <span class="meta">Materia: <b>${a.materia}</b> | Caricato da: <i>${a.autore}</i></span>
+                    </div>
+                    <a href="${a.file_url}" target="_blank" class="download-btn">Scarica</a>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        caricaLista();
+    </script>
+</body>
+</html>

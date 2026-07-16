@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Ruota della Morte</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #1e1e2e;
+            color: #cdd6f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            color: #f38ba8; /* Rosso/Rosa pastel */
+            margin-bottom: 20px;
+        }
+
+        /* Il contenitore ci serve per posizionare l'indicatore (la freccia) sopra la ruota */
+        .ruota-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+        }
+
+        /* La freccia che indica il vincitore in alto al centro */
+        .freccia {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 30px solid #f38ba8; /* Colore della freccia */
+            z-index: 10;
+        }
+
+        canvas {
+            border-radius: 50%;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        button {
+            margin-top: 30px;
+            padding: 12px 30px;
+            background-color: #89b4fa;
+            color: #11111b;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background-color: #b4befe;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎡 La Ruota della Morte 🎡</h1>
+
+    <div class="ruota-container">
+        <div class="freccia"></div>
+        <canvas id="canvasRuota" width="400" height="400"></canvas>
+    </div>
+
+    <button id="btnGira" onclick="avviaGiro()">GIRA LA RUOTA!</button>
+
+    <script>
+        const canvas = document.getElementById('canvasRuota');
+        const ctx = canvas.getContext('2d'); // Il nostro "pennello" 2D
+
+        // Lista di test dei tuoi compagni (poi la prenderemo dal database!)
+        const studenti = ["Alibrandi", "Boemi", "Bertuccelli", "Celeste", "Galletta", "Soraci", "Cucinotta", "Perrone", "Manganaro", "Ficarra", "Forganni", "Bellinghieri", "Scalia", "Spagnolo", "Sansone", "Mazzeo"];
+        
+        // Colori in stile Catppuccin (Arch design)
+        const colori = ["#313244", "#45475a", "#585b70", "#181825"];
+
+        let angoloAttuale = 0;
+        let velocita = 0;
+        const attrito = 0.98; // Più è vicino a 1, più dura il giro
+        let inMovimento = false;
+
+        const centro = canvas.width / 2;
+        const raggio = canvas.width / 2;
+
+        // --- FUNZIONE PER DISEGNARE LA RUOTA ---
+        function disegnaRuota() {
+            const numeroStudenti = studenti.length;
+            const ampiezzaSpicchio = (2 * Math.PI) / numeroStudenti;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            studenti.forEach((studente, i) => {
+                const angoloInizio = angoloAttuale + (i * ampiezzaSpicchio);
+                const angoloFine = angoloInizio + ampiezzaSpicchio;
+
+                // 1. Disegniamo lo spicchio colorato
+                ctx.beginPath();
+                ctx.fillStyle = colori[i % colori.length];
+                ctx.moveTo(centro, centro);
+                ctx.arc(centro, centro, raggio, angoloInizio, angoloFine);
+                ctx.lineTo(centro, centro);
+                ctx.fill();
+
+                // 2. Disegniamo il testo (il nome dello studente)
+                ctx.save(); // Salva lo stato attuale del disegno
+                ctx.translate(centro, centro); // Sposta il centro del disegno al centro della ruota
+                ctx.rotate(angoloInizio + ampiezzaSpicchio / 2); // Ruota fino a metà dello spicchio
+                
+                ctx.textAlign = "right";
+                ctx.fillStyle = "#cdd6f4";
+                ctx.font = "bold 14px sans-serif";
+                // Scriviamo il nome verso il bordo esterno della ruota
+                ctx.fillText(studente, raggio - 20, 5); 
+                
+                ctx.restore(); // Ripristina il disegno per lo spicchio successivo
+            });
+        }
+
+        // --- FUNZIONE CHE GESTISCE L'ANIMAZIONE FISICA ---
+        function aggiornaFisica() {
+            if (velocita > 0.001) {
+                angoloAttuale += velocita; // Fai girare la ruota
+                velocita *= attrito;      // Rallenta per via dell'attrito
+                disegnaRuota();
+                requestAnimationFrame(aggiornaFisica); // Richiama questa funzione al prossimo frame dello schermo
+            } else {
+                velocita = 0;
+                inMovimento = false;
+                calcolaVincitore();
+            }
+        }
+
+        // --- CALCOLA CHI VIENE INDICATO DALLA FRECCIA (in alto, a 270 gradi ovvero -90 gradi) ---
+       function calcolaVincitore() {
+    const numeroStudenti = studenti.length;
+    const ampiezzaSpicchio = (2 * Math.PI) / numeroStudenti;
+
+    // 1. Riduciamo l'angolo attuale all'interno di un singolo cerchio (da 0 a 2*PI)
+    const angoloGiroFinito = angoloAttuale % (2 * Math.PI);
+
+    // 2. La freccia è a 270 gradi (1.5 * Math.PI).
+    // Calcoliamo dove cade lo spicchio vincente invertendo il senso di rotazione.
+    let angoloTarget = (1.5 * Math.PI - angoloGiroFinito);
+    
+    // 3. Se l'angolo target è negativo, aggiungiamo 360 gradi (2 * Math.PI) per renderlo positivo
+    if (angoloTarget < 0) {
+        angoloTarget += 2 * Math.PI;
+    }
+
+    // 4. Ora dividiamo per l'ampiezza di uno spicchio per trovare l'indice esatto nell'array
+    const indiceVincitore = Math.floor(angoloTarget / ampiezzaSpicchio);
+    
+    // Sicurezza finale per evitare indici fuori scala (es. se arrotonda male a causa dei decimali di JS)
+    const indiceSicuro = (indiceVincitore % numeroStudenti + numeroStudenti) % numeroStudenti;
+
+    const vincitore = studenti[indiceSicuro];
+    alert("Il sacrificato è: " + vincitore + "! 💀");
+}
+        // --- AVVIA IL GIRO ---
+        function avviaGiro() {
+            if (inMovimento) return; // Evita di cliccare mentre sta già girando
+
+            inMovimento = true;
+            // Diamo un impulso di velocità casuale iniziale
+            velocita = Math.random() * 0.4 + 0.3; 
+            aggiornaFisica();
+        }
+
+        // Disegniamo la ruota ferma all'inizio
+        disegnaRuota();
+    </script>
+</body>
+</html>

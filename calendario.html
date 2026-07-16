@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📅 Verifiche & Compiti</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="cal-header">
+        <a href="index.html" class="back-link">← Torna alla Dashboard</a>
+        <h1 class="cal-title">📅 Verifiche & Compiti</h1>
+        <p class="cal-subtitle">Le scadenze della classe sincronizzate in tempo reale</p>
+    </header>
+
+    <main class="cal-container">
+        
+        <section class="admin-card" id="adminBox">
+            <h2 class="section-title admin-title">Aggiungi Scadenza</h2>
+            <form id="eventForm">
+                <div class="form-group">
+                    <label for="titolo">Cosa si fa?</label>
+                    <input type="text" id="titolo" placeholder="Es. Verifica capitoli 1-4 o Esercizi pag. 40" required>
+                </div>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="materia">Materia</label>
+                        <select id="materia" required>
+                            <option value="Informatica">Informatica</option>
+                            <option value="Sistemi">Sistemi</option>
+                            <option value="TPSIT">TPSIT</option>
+                            <option value="Matematica">Matematica</option>
+                            <option value="Storia">Storia</option>
+                            <option value="Italiano">Italiano</option>
+                            <option value="Inglese">Inglese</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tipo">Tipo di Scadenza</label>
+                        <select id="tipo" required>
+                            <option value="verifica">🔴 Verifica Scritta</option>
+                            <option value="interrogazione">🟡 Interrogazione</option>
+                            <option value="compito">🟢 Compiti / Promemoria</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="data">Data</label>
+                    <input type="date" id="data" required>
+                </div>
+
+                <button type="submit" class="submit-btn">Pubblica sul Calendario</button>
+            </form>
+        </section>
+
+        <section class="timeline-section">
+            <h2 class="section-title">Scadenze in programma</h2>
+            <div class="timeline" id="timelineEventi">
+                </div>
+        </section>
+
+    </main>
+
+    <footer class="cal-footer">
+        <span class="admin-trigger" onclick="attivaAdmin()">Gestisci Calendario (Solo autorizzati)</span>
+    </footer>
+
+    <script>
+        let pinGlobale = null;
+
+        // Funzione per mostrare il prompt del PIN e mostrare il form admin
+        function attivaAdmin() {
+            const pin = prompt("Inserisci il PIN di gestione calendario:");
+            if (pin) {
+                pinGlobale = pin;
+                document.getElementById('adminBox').classList.add('visible');
+            }
+        }
+
+        // Formatta la data in modo più carino (es. "18 Lug" o "Gio 18 Lug")
+        function formattaData(dataStr) {
+            const opzioni = { weekday: 'short', day: 'numeric', month: 'short' };
+            const data = new Date(dataStr);
+            return data.toLocaleDateString('it-IT', opzioni);
+        }
+
+        // Scarica la lista delle scadenze dal server locale
+        async function caricaCalendario() {
+            try {
+                const risp = await fetch('http://localhost:3000/lista-eventi');
+                const eventi = await risp.json();
+                const container = document.getElementById('timelineEventi');
+                container.innerHTML = '';
+
+                if (eventi.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <p>Nessuna verifica o compito in programma. Goditi la pace! 🕊️</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                eventi.forEach(ev => {
+                    const card = document.createElement('div');
+                    // Combiniamo la classe base con quella specifica del tipo (es: event-card verifica)
+                    card.className = `event-card ${ev.tipo}`;
+                    card.innerHTML = `
+                        <div class="event-details">
+                            <span class="badge-materia">${ev.materia}</span>
+                            <h3 class="event-title">${ev.titolo}</h3>
+                        </div>
+                        <div class="event-date">
+                            ${formattaData(ev.data)}
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (errore) {
+                console.error("Errore di caricamento:", errore);
+                document.getElementById('timelineEventi').innerHTML = `
+                    <div class="empty-state" style="color: #f38ba8;">
+                        <p>Impossibile connettersi al server. Assicurati che uvicorn sia attivo sulla porta 3000!</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Gestisce l'invio del form
+        document.getElementById('eventForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('titolo', document.getElementById('titolo').value);
+            formData.append('materia', document.getElementById('materia').value);
+            formData.append('tipo', document.getElementById('tipo').value);
+            formData.append('data', document.getElementById('data').value);
+            formData.append('pin', pinGlobale);
+
+            try {
+                const risp = await fetch('http://localhost:3000/aggiungi-evento', { 
+                    method: 'POST', 
+                    body: formData 
+                });
+                const dati = await risp.json();
+
+                if (dati.stato === "OK") {
+                    alert("Calendario aggiornato con successo!");
+                    document.getElementById('eventForm').reset();
+                    // Nascondiamo di nuovo il pannello per sicurezza
+                    document.getElementById('adminBox').classList.remove('visible');
+                    pinGlobale = null;
+                    caricaCalendario();
+                } else {
+                    alert(dati.messaggio);
+                }
+            } catch (errore) {
+                alert("Errore di connessione.");
+            }
+        });
+
+        // Caricamento iniziale
+        caricaCalendario();
+    </script>
+</body>
+</html>

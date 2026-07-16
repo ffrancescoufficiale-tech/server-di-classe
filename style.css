@@ -1,0 +1,291 @@
+/* ==========================================================================
+   RESET & VARIABILI GENERALI
+   ========================================================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Palette Catppuccin Mocha (Stile Arch) */
+    --bg-base: #1e1e2e;          /* Sfondo principale */
+    --bg-surface: #181825;       /* Sfondo dei box e delle card */
+    --bg-input: #313244;         /* Sfondo di bottoni e input */
+    --border-color: #45475a;     /* Bordi normali */
+    
+    /* Colori dei testi */
+    --text-main: #cdd6f4;        /* Bianco sporco */
+    --text-muted: #a6adc8;       /* Grigio */
+    --text-sub: #585b70;         /* Grigio scuro per dettagli */
+    
+    /* Colori di accento della timeline */
+    --color-primary: #cba6f7;    /* Viola (accento principale) */
+    --color-danger: #f38ba8;     /* Rosso per verifiche */
+    --color-warning: #f9e2af;    /* Giallo per interrogazioni */
+    --color-success: #a6e3a1;    /* Verde per i compiti */
+    
+    --font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+}
+
+body {
+    background-color: var(--bg-base);
+    color: var(--text-main);
+    font-family: var(--font-family);
+    line-height: 1.6;
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* ==========================================================================
+   HEADER (Testata della pagina)
+   ========================================================================== */
+.cal-header {
+    text-align: center;
+    margin-bottom: 40px;
+    width: 100%;
+    max-width: 650px;
+}
+
+.back-link {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: opacity 0.2s;
+    display: inline-block;
+    margin-bottom: 15px;
+}
+
+.back-link:hover {
+    opacity: 0.8;
+}
+
+.cal-title {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 5px;
+    color: #ffffff;
+}
+
+.cal-subtitle {
+    color: var(--text-muted);
+    font-size: 1rem;
+}
+
+/* ==========================================================================
+   LAYOUT GENERALE
+   ========================================================================== */
+.cal-container {
+    width: 100%;
+    max-width: 650px;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 15px;
+    border-left: 4px solid var(--color-primary);
+    padding-left: 10px;
+}
+
+/* ==========================================================================
+   CARD AMMINISTRATORE (Form di upload)
+   ========================================================================== */
+.admin-card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--color-primary);
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    display: none; /* Nascosta di default */
+}
+
+/* Quando riceve la classe da JS, si mostra con stile */
+.admin-card.visible {
+    display: block;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 18px;
+}
+
+.form-group label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+input, select {
+    padding: 12px;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-main);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus, select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(203, 166, 247, 0.2);
+}
+
+.submit-btn {
+    width: 100%;
+    padding: 14px;
+    background-color: var(--color-primary);
+    color: var(--bg-surface);
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: transform 0.1s, filter 0.2s;
+}
+
+.submit-btn:hover {
+    filter: brightness(1.1);
+}
+
+.submit-btn:active {
+    transform: scale(0.98);
+}
+
+/* ==========================================================================
+   TIMELINE & EVENT CARDS
+   ========================================================================== */
+.timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.event-card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    transition: transform 0.2s, border-color 0.2s;
+    border-left: 6px solid var(--border-color); /* Bordo di fallback */
+}
+
+.event-card:hover {
+    transform: translateX(4px);
+}
+
+/* Colorazioni dinamiche dei bordi sinistri basati sul tipo */
+.event-card.verifica {
+    border-left-color: var(--color-danger);
+}
+.event-card.interrogazione {
+    border-left-color: var(--color-warning);
+}
+.event-card.compito {
+    border-left-color: var(--color-success);
+}
+
+.event-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.badge-materia {
+    display: inline-block;
+    padding: 3px 8px;
+    background-color: var(--bg-input);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-main);
+    width: fit-content;
+    text-transform: uppercase;
+}
+
+.event-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.event-date {
+    background-color: var(--bg-input);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: var(--color-primary);
+    text-align: center;
+    min-width: 90px;
+    text-transform: capitalize;
+}
+
+/* ==========================================================================
+   STATI VUOTI / FOOTER
+   ========================================================================== */
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    background-color: var(--bg-surface);
+    border: 1px dashed var(--border-color);
+    border-radius: 12px;
+    color: var(--text-muted);
+}
+
+.cal-footer {
+    margin-top: auto;
+    padding-top: 60px;
+    text-align: center;
+    width: 100%;
+}
+
+.admin-trigger {
+    color: var(--text-sub);
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.2s;
+}
+
+.admin-trigger:hover {
+    color: var(--color-primary);
+}
+
+/* ==========================================================================
+   ANIMAZIONI
+   ========================================================================== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
