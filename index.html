@@ -159,7 +159,7 @@ if (!tokenUtente) {
     localStorage.setItem('token_chat_classe', tokenUtente);
 }
 
-const socket = new WebSocket('ws://localhost:3000/ws');
+const socket = new WebSocket('wss://server-di-classe.onrender.com/ws');
 
 const boxMessaggi = document.getElementById('box-messaggi');
 const messageInput = document.getElementById('messageInput');
