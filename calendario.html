@@ -78,24 +78,24 @@
         // Se sei sul PC usa localhost, se sei online su GitHub Pages punta al backend di Render
         const BASE_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
             ? "http://localhost:3000"
-            : "https://server-di-classe.onrender.com";
+            : "https://server-di-classe-backend.onrender.com";
 
         // Mostra il prompt del PIN e rende visibile il form admin
         function attivaAdmin() {
             const pin = prompt("Inserisci il PIN di gestione calendario:");
             if (pin) {
                 pinGlobale = pin;
-                document.getElementById('adminBox').classList.add('visible');
+                document.getElementById('adminBox').classList.add('visible') ;
             }
         }
 
-        // Formatta la data (es. "Gio 18 Lug")
+        // Formatta la data (es. "Gio 18 Lug ")
         function formattaData(dataStr) {
             const opzioni = { weekday: 'short', day: 'numeric', month: 'short' };
             const data = new Date(dataStr);
             return data.toLocaleDateString('it-IT', opzioni);
         }
-
+//speriamo funzioni parte 3
         // Scarica la lista delle scadenze dal server
         async function caricaCalendario() {
             try {
