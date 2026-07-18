@@ -273,7 +273,9 @@
     <div class="footer-link" onclick="sbloccaAdmin()">Sblocca Funzioni di Gestione (PIN)</div>
 
     <script>
-        const BASE_URL = "http://localhost:3000";
+        const BASE_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+        ? "http://localhost:3000" // Cambia in http://localhost:8000 se il tuo uvicorn locale usa la porta 8000
+        : "https://server-di-classe-backend.onrender.com";
         let studentiTotali = [];
         let studentiAttiviPerIlGiro = [];
         let pinGlobale = null;

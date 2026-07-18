@@ -21,7 +21,7 @@
         .back-link { color: #89b4fa; text-decoration: none; margin-bottom: 25px; }
         .container { width: 100%; max-width: 600px; }
         
-        /* Form oculto por defecto */
+        /* Form occulto por defecto */
         .admin-box {
             background-color: #181825;
             border: 1px solid #cba6f7;
@@ -86,13 +86,18 @@
         </div>
 
         <div class="appunti-list" id="listaDio">
-            </div>
+        </div>
 
         <div class="admin-toggle" onclick="attivaAdmin()">Sei il Dio Informatico? Accedi per caricare</div>
     </div>
 
     <script>
         let pinGlobale = null;
+
+        # Configurazione dinamica dell'URL del Backend
+        const BASE_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+            ? "http://localhost:3000"
+            : "https://server-di-classe-backend.onrender.com";
 
         function attivaAdmin() {
             const pin = prompt("Inserisci il PIN di autenticazione divina:");
@@ -103,31 +108,36 @@
         }
 
         async function caricaLista() {
-            const risp = await fetch('http://localhost:3000/lista-appunti');
-            const tutti = await risp.json();
-            const container = document.getElementById('listaDio');
-            container.innerHTML = '';
+            try {
+                const risp = await fetch(`${BASE_URL}/lista-appunti`);
+                const tutti = await risp.json();
+                const container = document.getElementById('listaDio');
+                container.innerHTML = '';
 
-            // Filtriamo prendendo SOLO quelli di tipo "dio"
-            const appuntiDio = tutti.filter(a => a.tipo === 'dio');
+                // Filtriamo prendendo SOLO quelli di tipo "dio"
+                const appuntiDio = tutti.filter(a => a.tipo === 'dio');
 
-            if(appuntiDio.length === 0) {
-                container.innerHTML = '<p style="color: #a6adc8; text-align: center;">Il Dio non ha ancora depositato il suo sapere per questa settimana.</p>';
-                return;
+                if(appuntiDio.length === 0) {
+                    container.innerHTML = '<p style="color: #a6adc8; text-align: center;">Il Dio non ha ancora depositato il suo sapere per questa settimana.</p>';
+                    return;
+                }
+
+                appuntiDio.forEach(a => {
+                    const card = document.createElement('div');
+                    card.className = 'appunto-card';
+                    card.innerHTML = `
+                        <div>
+                            <h4 style="margin:0 0 5px 0; color:#cba6f7;">${a.titolo}</h4>
+                            <small style="color:#a6adc8;">Materia: ${a.materia}</small>
+                        </div>
+                        <a href="${a.file_url}" target="_blank" class="download-btn">Scarica</a>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (errore) {
+                console.error("Errore connessione:", errore);
+                document.getElementById('listaDio').innerHTML = '<p style="color: #f38ba8; text-align: center;">Impossibile connettersi al database degli appunti.</p>';
             }
-
-            appuntiDio.forEach(a => {
-                const card = document.createElement('div');
-                card.className = 'appunto-card';
-                card.innerHTML = `
-                    <div>
-                        <h4 style="margin:0 0 5px 0; color:#cba6f7;">${a.titolo}</h4>
-                        <small style="color:#a6adc8;">Materia: ${a.materia}</small>
-                    </div>
-                    <a href="${a.file_url}" target="_blank" class="download-btn">Scarica</a>
-                `;
-                container.appendChild(card);
-            });
         }
 
         document.getElementById('uploadDioForm').addEventListener('submit', async (e) => {
@@ -140,15 +150,19 @@
             formData.append('pin', pinGlobale);
             formData.append('file', document.getElementById('file').files[0]);
 
-            const risp = await fetch('http://localhost:3000/upload-appunti', { method: 'POST', body: formData });
-            const dati = await risp.json();
+            try {
+                const risp = await fetch(`${BASE_URL}/upload-appunti`, { method: 'POST', body: formData });
+                const dati = await risp.json();
 
-            if (dati.stato === "OK") {
-                alert("Sapere caricato nell'iperuranio!");
-                document.getElementById('uploadDioForm').reset();
-                caricaLista();
-            } else {
-                alert(dati.messaggio);
+                if (dati.stato === "OK") {
+                    alert("Sapere caricato nell'iperuranio!");
+                    document.getElementById('uploadDioForm').reset();
+                    caricaLista();
+                } else {
+                    alert(dati.messaggio);
+                }
+            } catch (errore) {
+                alert("Errore di caricamento: controlla la connessione al server.");
             }
         });
 
