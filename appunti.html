@@ -3,12 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bacheca Appunti</title>
+    <title>🎡 La Ruota delle Interrogazioni & Registro</title>
     <style>
+        /* Palette Catppuccin Mocha */
+        :root {
+            --bg-page: #1e1e2e;
+            --bg-box: #181825;
+            --bg-input: #313244;
+            --border-color: #45475a;
+            --text-main: #cdd6f4;
+            --text-muted: #a6adc8;
+            --accent-yellow: #f9e2af;
+            --accent-blue: #89b4fa;
+            --accent-green: #a6e3a1;
+            --accent-red: #f38ba8;
+        }
+
         body {
             font-family: 'Segoe UI', sans-serif;
-            background-color: #1e1e2e;
-            color: #cdd6f4;
+            background-color: var(--bg-page);
+            color: var(--text-main);
             margin: 0;
             padding: 40px 20px;
             display: flex;
@@ -18,242 +32,502 @@
             box-sizing: border-box;
         }
 
-        h1 {
-            color: #f9e2af; /* Giallo pastello per gli appunti */
-            margin-bottom: 5px;
+        h1, h2, h3, h4 {
+            color: var(--accent-yellow);
+            margin-top: 0;
+            margin-bottom: 10px;
         }
 
-        .back-link {
-            color: #89b4fa;
-            text-decoration: none;
-            margin-bottom: 25px;
-            font-size: 0.95rem;
-        }
-
-        .container {
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
             width: 100%;
-            max-width: 700px;
-            display: flex;
-            flex-direction: column;
-            gap: 30px;
+            max-width: 1100px;
         }
 
-        /* Box del modulo di caricamento */
-        .upload-box {
-            background-color: #181825;
-            border: 1px solid #313244;
+        @media (min-width: 768px) {
+            .dashboard { grid-template-columns: 1fr 1fr; }
+            .ruota-box { grid-column: 1 / -1; display: flex; justify-content: center; }
+        }
+
+        /* Le tue schede con i colori Catppuccin */
+        .card {
+            background-color: var(--bg-box);
+            border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 25px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
-
-        .upload-box h3 {
-            margin-top: 0;
-            color: #f9e2af;
-        }
-
-        .form-group {
+        
+        .ruota-layout {
             display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-bottom: 15px;
-        }
-
-        label {
-            font-size: 0.9rem;
-            color: #a6adc8;
-        }
-
-        input, select {
-            padding: 10px;
-            background-color: #313244;
-            border: 1px solid #45475a;
-            border-radius: 6px;
-            color: #cdd6f4;
-            outline: none;
-        }
-
-        input:focus, select:focus {
-            border-color: #f9e2af;
-        }
-
-        button {
+            flex-wrap: wrap;
+            gap: 30px;
+            justify-content: center;
+            align-items: center;
             width: 100%;
+            margin-top: 15px;
+        }
+
+        .ruota-container {
+            position: relative;
+            width: 320px;
+            height: 320px;
+        }
+        .canvas-ruota {
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(249, 226, 175, 0.15);
+        }
+        .indicatore {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 25px solid var(--accent-red);
+            z-index: 10;
+        }
+
+        /* Bottone Gira Ruota */
+        .girare-btn {
+            display: block;
+            width: 200px;
+            margin: 20px auto 0 auto;
             padding: 12px;
-            background-color: #f9e2af;
+            background-color: var(--accent-yellow);
             color: #11111b;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-weight: bold;
             cursor: pointer;
-            font-size: 1rem;
+            font-size: 1.1rem;
             transition: background-color 0.2s;
         }
-
-        button:hover {
-            background-color: #f5e0dc;
-        }
-
-        /* Lista degli appunti */
-        .appunti-list {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .appunto-card {
-            background-color: #181825;
-            border: 1px solid #313244;
+        .girare-btn:hover:not(:disabled) { background-color: #f5e0dc; }
+        .girare-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .studenti-check-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            min-width: 280px;
+            background-color: var(--bg-page);
+            padding: 15px;
             border-radius: 8px;
-            padding: 15px 20px;
+            border: 1px solid var(--border-color);
+        }
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            color: var(--text-main);
+        }
+        .check-item input {
+            width: auto; margin: 0; cursor: pointer;
+            accent-color: var(--accent-yellow);
+        }
+
+        /* Righe delle liste */
+        .list-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border-color);
+            background-color: rgba(255,255,255,0.01);
         }
-
-        .appunto-info h4 {
-            margin: 0 0 5px 0;
-            color: #89b4fa;
-        }
-
-        .appunto-meta {
-            font-size: 0.8rem;
-            color: #a6adc8;
-        }
-
-        .download-btn {
-            background-color: #313244;
-            color: #cdd6f4;
-            padding: 8px 15px;
+        .list-item.evidenza {
+            border: 1px solid var(--accent-yellow);
             border-radius: 6px;
-            text-decoration: none;
-            font-size: 0.9rem;
+            box-shadow: 0 0 10px rgba(249, 226, 175, 0.15);
+        }
+
+        /* Badge di stato */
+        .badge {
+            background-color: var(--bg-input);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
             font-weight: bold;
-            border: 1px solid #45475a;
+            border: 1px solid var(--border-color);
+        }
+        .badge-danger { color: var(--accent-red); }
+        .badge-success { color: var(--accent-green); }
+        
+        .nota-esclusi {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        
+        /* Pulsante Mostra Altro alternativo */
+        .mostra-altro-btn {
+            width: 100%;
+            padding: 10px;
+            margin-top: 15px;
+            background: transparent;
+            border: 1px dashed var(--border-color);
+            color: var(--accent-blue);
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
             transition: all 0.2s;
         }
-
-        .download-btn:hover {
-            background-color: #89b4fa;
-            color: #11111b;
-            border-color: #89b4fa;
+        .mostra-altro-btn:hover {
+            background-color: rgba(137, 180, 250, 0.1);
+            border-color: var(--accent-blue);
         }
+
+        #formManuale { display: none; margin-top: 15px; }
+        #formManuale.visible { display: block; }
+        
+        input, select {
+            width: 100%; padding: 10px; margin: 6px 0;
+            background-color: var(--bg-input); border: 1px solid var(--border-color);
+            color: var(--text-main); border-radius: 6px; box-sizing: border-box;
+            outline: none;
+        }
+        input:focus, select:focus { border-color: var(--accent-yellow); }
+
+        button.action-btn { 
+            width: 100%; padding: 10px; margin-top: 6px;
+            background-color: var(--accent-yellow); color: #11111b;
+            border: none; border-radius: 6px; cursor: pointer; font-weight: bold;
+        }
+        button.action-btn:hover { background-color: #f5e0dc; }
+        
+        .footer-link { margin-top: 30px; font-size: 0.9rem; color: var(--text-muted); cursor: pointer; }
+        .footer-link:hover { color: var(--accent-blue); text-decoration: underline; }
     </style>
 </head>
 <body>
 
-    <a href="index.html" class="back-link">← Torna alla Dashboard</a>
-    <h1>📚 Bacheca Appunti del "Dio Informatico"</h1>
-    <p style="color: #a6adc8; margin-bottom: 30px;">Carica e scarica i materiali di studio della classe</p>
-
-    <div class="container">
+    <h1>🎡 Sistema Interrogazioni Classe</h1>
+    
+    <div class="dashboard">
         
-        <div class="upload-box">
-            <h3>Carica un nuovo appunto</h3>
-            <form id="uploadForm">
-                <div class="form-group">
-                    <label for="titolo">Titolo Appunto</label>
-                    <input type="text" id="titolo" placeholder="Es. Riassunto capitolo 3 Storia" required>
-                </div>
-                <div class="form-group">
-                    <label for="materia">Materia</label>
-                    <select id="materia" required>
+        <div class="card ruota-box">
+            <div>
+                <div style="text-align: center;">
+                    <label for="materiaRuota" style="color: var(--text-muted);">Materia Attuale: </label>
+                    <select id="materiaRuota" style="width: auto; display: inline-block;">
                         <option value="Informatica">Informatica</option>
-                        <option value="Storia">Storia</option>
+                        <option value="Sistemi">Sistemi</option>
+                        <option value="TPSIT">TPSIT</option>
                         <option value="Matematica">Matematica</option>
-                        <option value="Italiano">Italiano</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label for="file">Seleziona il File (PDF, Immagine...)</label>
-                    <input type="file" id="file" required>
+                
+                <div class="ruota-layout">
+                    <div class="ruota-container">
+                        <div class="indicatore"></div>
+                        <canvas id="ruota" class="canvas-ruota" width="320" height="320"></canvas>
+                    </div>
+                    
+                    <div>
+                        <h4 style="color: var(--text-muted); margin-bottom: 8px;">Partecipano al giro:</h4>
+                        <div class="studenti-check-grid" id="grigliaCheckStudenti"></div>
+                    </div>
                 </div>
-                <button type="submit">CARICA SULLA BACHECA</button>
-            </form>
+
+                <button class="girare-btn" id="btnGira" onclick="giraLaRuota()">GIRA LA RUOTA 🚀</button>
+            </div>
         </div>
 
-        <div>
-            <h3 style="color: #a6adc8; margin-bottom: 15px;">Appunti disponibili</h3>
-            <div class="appunti-list" id="listaAppunti">
-                </div>
+        <div class="card">
+            <h2>🎯 Estratti / In Coda questa settimana</h2>
+            <div id="codaLista"></div>
+        </div>
+
+        <div class="card">
+            <h2>🔒 Storico Interrogazioni Avvenute</h2>
+            <div id="storicoLista"></div>
+            <button id="btnMostraAltro" class="mostra-altro-btn" style="display: none;" onclick="toggleMostraTuttoStorico()"></button>
+        </div>
+
+        <div class="card" id="adminCard">
+            <h2>Pannello Gestore (Richiede PIN)</h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Usa questo pannello se vuoi inserire manualmente qualcuno senza girare la ruota.</p>
+            <form id="formManuale">
+                <select id="selectStudente" required></select>
+                <select id="selectMateria" required>
+                    <option value="Informatica">Informatica</option>
+                    <option value="Sistemi">Sistemi</option>
+                    <option value="TPSIT">TPSIT</option>
+                    <option value="Matematica">Matematica</option>
+                </select>
+                <input type="text" id="inputGiorno" placeholder="Giorno (Es. Lunedì) - Facoltativo">
+                <button type="submit" class="action-btn">Aggiungi Manualmente 📝</button>
+            </form>
         </div>
 
     </div>
 
-    <script>
-        // Recuperiamo il nickname salvato se esiste, altrimenti usiamo Anonimo
-        const autoreAttuale = localStorage.getItem('ultimo_nick') || "Anonimo";
+    <div class="footer-link" onclick="sbloccaAdmin()">Sblocca Funzioni di Gestione (PIN)</div>
 
-        // Funzione per caricare la lista degli appunti dal server
-        async function caricaLista() {
+    <script>
+        const BASE_URL = "http://localhost:3000";
+        let studentiTotali = [];
+        let studentiAttiviPerIlGiro = [];
+        let pinGlobale = null;
+        
+        let datiStoricoSalvati = []; 
+        let mostraTuttoStorico = false;
+        
+        const canvas = document.getElementById("ruota");
+        const ctx = canvas.getContext("2d");
+
+        async function caricaDati() {
             try {
-                const risposta = await fetch('http://localhost:3000/lista-appunti');
-                const appunti = await risposta.json();
+                const risp = await fetch(`${BASE_URL}/dati-interrogazioni`);
+                const dati = await risp.json();
                 
-                const container = document.getElementById('listaAppunti');
-                container.innerHTML = ''; // Svuota la lista
+                studentiTotali = dati.studenti;
+                datiStoricoSalvati = dati.storico || [];
                 
-                if (appunti.length === 0) {
-                    container.innerHTML = '<p style="color: #a6adc8; text-align: center;">Nessun appunto ancora caricato. Sii il primo!</p>';
-                    return;
+                const griglia = document.getElementById("grigliaCheckStudenti");
+                if (griglia.children.length === 0) {
+                    studentiTotali.forEach(st => {
+                        const label = document.createElement("label");
+                        label.className = "check-item";
+                        label.innerHTML = `
+                            <input type="checkbox" value="${st}" checked onchange="ricalcolaStudentiAttivi()">
+                            <span>${st}</span>
+                        `;
+                        griglia.appendChild(label);
+                    });
                 }
 
-                appunti.forEach(appunto => {
-                    const card = document.createElement('div');
-                    card.className = 'appunto-card';
-                    card.innerHTML = `
-                        <div class="appunto-info">
-                            <h4>${appunto.titolo}</h4>
-                            <span class="appunto-meta">Materia: <b>${appunto.materia}</b> | Caricato da: <i>${appunto.autore}</i></span>
+                ricalcolaStudentiAttivi();
+                
+                const selectSt = document.getElementById("selectStudente");
+                if (selectSt.children.length === 0) {
+                    studentiTotali.forEach(st => {
+                        let opt = document.createElement("option");
+                        opt.value = st; opt.textContent = st;
+                        selectSt.appendChild(opt);
+                    });
+                }
+
+                const codaLista = document.getElementById("codaLista");
+                codaLista.innerHTML = dati.in_coda.length === 0 ? "<p style='color:var(--text-muted);'>Nessuno in coda!</p>" : "";
+                dati.in_coda.forEach(item => {
+                    const div = document.createElement("div");
+                    div.className = "list-item";
+                    const btnSposta = pinGlobale ? `<button onclick="spostaAStorico(${item.id})" style="background:var(--accent-green); border:none; border-radius:4px; color:#11111b; cursor:pointer; padding:6px 10px; font-weight:bold;">Spunta ✔</button>` : '';
+                    div.innerHTML = `
+                        <div>
+                            <span class="badge badge-danger">${item.materia}</span>
+                            <strong>${item.studente}</strong> <small style="color:var(--text-muted);">(${item.giorno})</small>
+                            <span class="nota-esclusi">Esclusi al giro: ${item.esclusi_al_giro || 'Nessuno'}</span>
                         </div>
-                        <a href="${appunto.file_url}" target="_blank" class="download-btn">Scarica</a>
+                        ${btnSposta}
                     `;
-                    container.appendChild(card);
+                    codaLista.appendChild(div);
                 });
-            } catch (errore) {
-                console.error("Errore nel recupero degli appunti:", errore);
+
+                renderizzaStoricoVisivo();
+
+            } catch (err) {
+                console.error("Errore comunicazione con il backend:", err);
             }
         }
 
-        // Gestione dell'invio del modulo (Upload)
-        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
-            e.preventDefault(); // Evita il ricaricamento della pagina
-
-            const titolo = document.getElementById('titolo').value;
-            const materia = document.getElementById('materia').value;
-            const fileInput = document.getElementById('file');
-            const file = fileInput.files[0];
-
-            // Poiché carichiamo un file, dobbiamo usare FormData (corrisponde a python-multipart nel backend)
-            const formData = new FormData();
-            formData.append('titolo', titolo);
-            formData.append('materia', materia);
-            formData.append('autore', autoreAttuale);
-            formData.append('file', file);
-
-            try {
-                const risposta = await fetch('http://localhost:3000/upload-appunti', {
-                    method: 'POST',
-                    body: formData
-                });
+        function renderizzaStoricoVisivo() {
+            const storicoLista = document.getElementById("storicoLista");
+            const btnMostraAltro = document.getElementById("btnMostraAltro");
+            
+            storicoLista.innerHTML = datiStoricoSalvati.length === 0 ? "<p style='color:var(--text-muted);'>Nessuno storico registrato.</p>" : "";
+            
+            const limite = 6;
+            const datiDaMostrare = mostraTuttoStorico ? datiStoricoSalvati : datiStoricoSalvati.slice(0, limite);
+            
+            datiDaMostrare.forEach((item, index) => {
+                const div = document.createElement("div");
+                div.className = `list-item ${index === 0 && !mostraTuttoStorico ? 'evidenza' : ''}`;
                 
-                const risultato = await risposta.json();
-                
-                if (risultato.stato === "OK") {
-                    alert("File caricato correttamente!");
-                    document.getElementById('uploadForm').reset(); // Svuota i campi
-                    caricaLista(); // Ricarica la lista degli appunti
-                } else {
-                    alert("Errore: " + risultato.messaggio);
-                }
-            } catch (errore) {
-                alert("Errore di connessione con il server.");
-                console.error(errore);
+                const dataStringa = item.data_completato || "Recentemente";
+
+                div.innerHTML = `
+                    <div>
+                        <span class="badge badge-success">${item.materia}</span>
+                        <strong>${item.studente}</strong>
+                        <span class="nota-esclusi" style="color:var(--text-muted);">Esclusi al giro: ${item.esclusi_al_giro || 'Nessuno'}</span>
+                    </div>
+                    <div style="text-align: right; display: flex; flex-direction: column; gap: 4px;">
+                        <span style="font-size:0.8rem; color:var(--accent-yellow); font-weight:bold;">${index === 0 && !mostraTuttoStorico ? '🔥 ULTIMO' : 'REGISTRATO'}</span>
+                        <span style="font-size:0.75rem; color:var(--accent-blue); font-style: italic;">📅 ${dataStringa}</span>
+                    </div>
+                `;
+                storicoLista.appendChild(div);
+            });
+
+            if (datiStoricoSalvati.length > limite) {
+                btnMostraAltro.style.display = "block";
+                btnMostraAltro.textContent = mostraTuttoStorico ? "Mostra Meno ⬆️" : `Mostra Altri (${datiStoricoSalvati.length - limite}) ⬇️`;
+            } else {
+                btnMostraAltro.style.display = "none";
             }
+        }
+
+        function toggleMostraTuttoStorico() {
+            mostraTuttoStorico = !mostraTuttoStorico;
+            renderizzaStoricoVisivo();
+        }
+
+        function ricalcolaStudentiAttivi() {
+            const checkboxes = document.querySelectorAll("#grigliaCheckStudenti input[type='checkbox']");
+            studentiAttiviPerIlGiro = [];
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    studentiAttiviPerIlGiro.push(cb.value);
+                }
+            });
+            disegnaRuota();
+        }
+
+        function disegnaRuota() {
+            if (studentiAttiviPerIlGiro.length === 0) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#fff";
+                ctx.font = "14px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText("Tutti esclusi! Spunta qualcuno 🎯", 160, 160);
+                return;
+            }
+            
+            const numSpicchi = studentiAttiviPerIlGiro.length;
+            const arco = (2 * Math.PI) / numSpicchi;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            for (let i = 0; i < numSpicchi; i++) {
+                const ang = (i * arco);
+                
+                const tonalita = (i * 360) / numSpicchi;
+                ctx.fillStyle = `hsl(${tonalita}, 65%, 50%)`;
+                ctx.beginPath();
+                ctx.moveTo(160, 160);
+                ctx.arc(160, 160, 150, ang, ang + arco);
+                ctx.lineTo(160, 160);
+                ctx.fill();
+                
+                ctx.save();
+                ctx.fillStyle = "#11111b"; // Testo scuro sugli spicchi chiari per leggibilità
+                ctx.translate(160, 160);
+                ctx.rotate(ang + arco / 2);
+                ctx.textAlign = "right";
+                ctx.font = "bold 13px sans-serif";
+                ctx.fillText(studentiAttiviPerIlGiro[i], 140, 5);
+                ctx.restore();
+            }
+        }
+
+        function giraLaRuota() {
+            if (studentiAttiviPerIlGiro.length === 0) return alert("Seleziona almeno uno studente!");
+            const btn = document.getElementById("btnGira");
+            btn.disabled = true;
+
+            const arrayCasuale = new Uint32Array(1);
+            window.crypto.getRandomValues(arrayCasuale);
+            const indiceVincente = arrayCasuale[0] % studentiAttiviPerIlGiro.length;
+            
+            const vincitore = studentiAttiviPerIlGiro[indiceVincente];
+            const numSpicchi = studentiAttiviPerIlGiro.length;
+            const arco = (2 * Math.PI) / numSpicchi;
+            const angoloSpicchio = indiceVincente * arco;
+            
+            const giriCompleti = 6 * 2 * Math.PI; 
+            const compensazioneFreccia = (3 / 2) * Math.PI; 
+            
+            const bufferOffset = new Uint32Array(1);
+            window.crypto.getRandomValues(bufferOffset);
+            const ratioCasuale = bufferOffset[0] / 4294967295; 
+            const offsetCasuale = (ratioCasuale * 0.6 + 0.2) * arco; 
+            
+            const rotazioneTotale = giriCompleti + compensazioneFreccia - angoloSpicchio - offsetCasuale;
+
+            const canvasRuota = document.getElementById("ruota");
+            canvasRuota.style.transition = "transform 4s cubic-bezier(0.1, 0.8, 0.1, 1)";
+            canvasRuota.style.transform = `rotate(${rotazioneTotale * (180 / Math.PI)}deg)`;
+
+            setTimeout(async () => {
+                btn.disabled = false;
+                alert(`🎯 Estratto: ${vincitore}!`);
+                
+                let esclusi = studentiTotali.filter(st => !studentiAttiviPerIlGiro.includes(st));
+                let stringaEsclusi = esclusi.length > 0 ? esclusi.join(", ") : "Nessuno";
+
+                if (pinGlobale) {
+                    await inviaInCodaBackend(vincitore, document.getElementById("materiaRuota").value, "Estratto Ruota", stringaEsclusi);
+                } else {
+                    alert("Nota: L'estratto non è salvato nel database perché manca il PIN di gestione.");
+                }
+                
+                canvasRuota.style.transition = "none";
+                canvasRuota.style.transform = "rotate(0deg)";
+                caricaDati();
+            }, 4000);
+        }
+
+        async function inviaInCodaBackend(studente, materia, giorno, esclusi = "Nessuno") {
+            const formData = new FormData();
+            formData.append("studente", studente);
+            formData.append("materia", materia);
+            formData.append("giorno", giorno);
+            formData.append("esclusi", esclusi);
+            formData.append("pin", pinGlobale);
+
+            const r = await fetch(`${BASE_URL}/aggiungi-in-coda`, { method: "POST", body: formData });
+            const risp = await r.json();
+            if (risp.stato !== "OK") alert(risp.messaggio);
+            caricaDati();
+        }
+
+        async function spostaAStorico(id) {
+            const formData = new FormData();
+            formData.append("coda_id", id);
+            formData.append("pin", pinGlobale);
+            
+            const adesso = new Date();
+            const dataFormattata = adesso.toLocaleDateString('it-IT', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            formData.append("data_interrogazione", dataFormattata);
+
+            const r = await fetch(`${BASE_URL}/sposta-a-storico`, { method: "POST", body: formData });
+            const risp = await r.json();
+            if (risp.stato !== "OK") alert(risp.messaggio);
+            caricaDati();
+        }
+
+        function sbloccaAdmin() {
+            const pin = prompt("Inserisci il PIN del 'Dio Informatico':");
+            if (pin) {
+                pinGlobale = pin;
+                document.getElementById("formManuale").classList.add("visible");
+                caricaDati();
+            }
+        }
+
+        document.getElementById("formManuale").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const st = document.getElementById("selectStudente").value;
+            const mat = document.getElementById("selectMateria").value;
+            const giorno = document.getElementById("inputGiorno").value;
+            await inviaInCodaBackend(st, mat, giorno ? giorno : "Da definire", "Inserimento Manuale");
         });
 
-        // Carica la lista all'apertura della pagina
-        caricaLista();
+        caricaDati();
     </script>
 </body>
 </html>

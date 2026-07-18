@@ -3,34 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>La Ruota della Morte</title>
+    <title>🎡 La Ruota delle Interrogazioni & Registro</title>
     <style>
+        :root {
+            --bg-main: #1e1e2e;
+            --bg-surface: #181825;
+            --border-color: #2a2a32;
+            --text-main: #cdd6f4;
+            --text-blue: #89b4fa;
+            --text-muted: #a6adc8;
+            --accent-yellow: #f9e2af;
+            --color-primary: #7c4dff;
+            --color-success: #a6e3a1;
+            --color-danger: #f38ba8;
+        }
         body {
-            font-family: 'Segoe UI', sans-serif;
-            background-color: #1e1e2e;
-            color: #cdd6f4;
+            font-family: system-ui, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
+        }
+        h1, h2, h3 {
+            color: var(--text-blue);
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 1100px;
+        }
+        @media (min-width: 768px) {
+            .dashboard { grid-template-columns: 1fr 1fr; }
+            .ruota-box { grid-column: 1 / -1; display: flex; justify-content: center; }
+        }
+        .card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        
+        /* Layout per affiancare Ruota e Checkbox */
+        .ruota-layout {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
             justify-content: center;
-            min-height: 100vh;
-            margin: 0;
+            align-items: center;
+            width: 100%;
+            margin-top: 15px;
         }
 
-        h1 {
-            color: #f38ba8; /* Rosso/Rosa pastel */
-            margin-bottom: 20px;
-        }
-
-        /* Il contenitore ci serve per posizionare l'indicatore (la freccia) sopra la ruota */
+        /* Stile Ruota */
         .ruota-container {
             position: relative;
-            width: 400px;
-            height: 400px;
+            width: 320px;
+            height: 320px;
         }
-
-        /* La freccia che indica il vincitore in alto al centro */
-        .freccia {
+        .canvas-ruota {
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(124, 77, 255, 0.3);
+        }
+        .indicatore {
             position: absolute;
             top: -10px;
             left: 50%;
@@ -39,149 +78,474 @@
             height: 0;
             border-left: 15px solid transparent;
             border-right: 15px solid transparent;
-            border-top: 30px solid #f38ba8; /* Colore della freccia */
+            border-top: 25px solid var(--color-danger);
             z-index: 10;
         }
-
-        canvas {
-            border-radius: 50%;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-        }
-
-        button {
-            margin-top: 30px;
-            padding: 12px 30px;
-            background-color: #89b4fa;
-            color: #11111b;
+        .girare-btn {
+            display: block;
+            width: 200px;
+            margin: 20px auto 0 auto;
+            padding: 12px;
+            background: var(--color-primary);
+            color: #fff;
             border: none;
             border-radius: 8px;
-            font-size: 1.1rem;
             font-weight: bold;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: background 0.2s;
+        }
+        .girare-btn:hover:not(:disabled) {
+            background: #9666ff;
+        }
+        .girare-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        /* Griglia dei Quadratini */
+        .studenti-check-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            min-width: 280px;
+            background: var(--bg-main);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            color: var(--text-main);
+        }
+        .check-item input {
+            width: auto; margin: 0; cursor: pointer;
+            accent-color: var(--color-primary);
+        }
+
+        /* Liste e Badge */
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .badge {
+            background: var(--border-color);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .badge-danger { background: rgba(243, 139, 168, 0.2); color: var(--color-danger); }
+        .badge-success { background: rgba(166, 227, 161, 0.2); color: var(--color-success); }
+        
+        .evidenza {
+            border: 1px solid var(--accent-yellow);
+            box-shadow: 0 0 10px rgba(249, 226, 175, 0.15);
+        }
+        .nota-esclusi {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        
+        /* Ripristino Bottone Spunta Verde */
+        .btn-spunta {
+            background-color: var(--color-success) !important;
+            color: #11111b !important;
+            border: none !important;
+            border-radius: 6px !important;
+            padding: 6px 12px !important;
+            font-weight: bold !important;
+            cursor: pointer !important;
+            font-size: 0.85rem !important;
+            width: auto !important;
+            transition: opacity 0.2s;
+        }
+        .btn-spunta:hover {
+            opacity: 0.9;
+        }
+
+        /* Pulsante Mostra Altro */
+        .mostra-altro-btn {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background: transparent;
+            border: 1px dashed var(--border-color);
+            color: var(--color-primary);
+            font-weight: bold;
+            border-radius: 6px;
             cursor: pointer;
             transition: all 0.2s;
         }
-
-        button:hover {
-            background-color: #b4befe;
-            transform: scale(1.05);
+        .mostra-altro-btn:hover {
+            background: rgba(124, 77, 255, 0.1);
+            border-color: var(--color-primary);
         }
+
+        #formManuale { display: none; margin-top: 15px; }
+        #formManuale.visible { display: block; }
+        input, select, button.action-btn {
+            width: 100%; padding: 8px; margin: 6px 0;
+            background: var(--bg-main); border: 1px solid var(--border-color);
+            color: #fff; border-radius: 6px; box-sizing: border-box;
+            outline: none;
+        }
+        input:focus, select:focus { border-color: var(--accent-yellow); }
+        button.action-btn { background: var(--color-primary); cursor: pointer; font-weight: bold;}
+        .footer-link { margin-top: 30px; font-size: 0.9rem; color: #555; cursor: pointer; transition: color 0.2s; }
+        .footer-link:hover { color: var(--text-blue); }
     </style>
 </head>
 <body>
+    <a href="index.html" style="color: var(--text-blue); text-decoration: none; margin-bottom: 15px;">← Torna alla Dashboard</a>
 
-    <h1>🎡 La Ruota della Morte 🎡</h1>
+    <h1>🎡 Sistema Interrogazioni Classe</h1>
+    
+    <div class="dashboard">
+        
+        <!-- SEZIONE RUOTA CON ACCANTO CHECKBOX -->
+        <div class="card ruota-box">
+            <div>
+                <div style="text-align: center;">
+                    <label for="materiaRuota" style="color: var(--text-muted);">Materia Attuale: </label>
+                    <select id="materiaRuota" style="width: auto; display: inline-block;">
+                        <option value="Informatica">Informatica</option>
+                        <option value="Sistemi e Reti">Sistemi e Reti</option>
+                        <option value="TPSI">TPSI</option>
+                        <option value="COMPL.DI MATEMATICA">COMPL.DI Matematica</option>
+                        <option value="Matematica">Matematica</option>
+                        <option value="Inglese">Inglese</option>
+                        <option value="Italiano">Italiano</option>
+                        <option value="Storia">Storia</option>
+                        <option value="Telecomunicazioni">Telecomunicazioni</option>
+                    </select>
+                </div>
+                
+                <div class="ruota-layout">
+                    <!-- Componente Ruota -->
+                    <div class="ruota-container">
+                        <div class="indicatore"></div>
+                        <canvas id="ruota" class="canvas-ruota" width="320" height="320"></canvas>
+                    </div>
+                    
+                    <!-- Lista Quadratini Studenti -->
+                    <div>
+                        <h4 style="margin-top: 0; color: var(--text-muted); margin-bottom: 8px;">Partecipano al giro:</h4>
+                        <div class="studenti-check-grid" id="grigliaCheckStudenti">
+                            <!-- Generato dinamicamente via JS -->
+                        </div>
+                    </div>
+                </div>
 
-    <div class="ruota-container">
-        <div class="freccia"></div>
-        <canvas id="canvasRuota" width="400" height="400"></canvas>
+                <button class="girare-btn" id="btnGira" onclick="giraLaRuota()">GIRA LA RUOTA 🚀</button>
+            </div>
+        </div>
+
+        <!-- CODA CANDIDATI ATTUALI -->
+        <div class="card">
+            <h2>🎯 Estratti / In Coda questa settimana</h2>
+            <div id="codaLista"></div>
+        </div>
+
+        <!-- STORICO E ULTIMI INTERROGATI -->
+        <div class="card">
+            <h2>🔒 Storico Interrogazioni Avvenute</h2>
+            <div id="storicoLista"></div>
+            <button id="btnMostraAltro" class="mostra-altro-btn" style="display: none;" onclick="toggleMostraTuttoStorico()"></button>
+        </div>
+
+        <!-- PANNELLO UTENTE AUTORIZZATO -->
+        <div class="card" id="adminCard">
+            <h2>Pannello Gestore (Richiede PIN)</h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Usa questo pannello se vuoi inserire manualmente qualcuno senza girare la ruota.</p>
+            <form id="formManuale">
+                <select id="selectStudente" required></select>
+                <select id="selectMateria" required>
+                        <option value="Informatica">Informatica</option>
+                        <option value="Sistemi e Reti">Sistemi e Reti</option>
+                        <option value="TPSI">TPSI</option>
+                        <option value="COMPL.DI MATEMATICA">COMPL.DI Matematica</option>
+                        <option value="Matematica">Matematica</option>
+                        <option value="Inglese">Inglese</option>
+                        <option value="Italiano">Italiano</option>
+                        <option value="Storia">Storia</option>
+                        <option value="Telecomunicazioni">Telecomunicazioni</option>
+                </select>
+                <input type="text" id="inputGiorno" placeholder="Giorno (Es. Lunedì) - Facoltativo">
+                <button type="submit" class="action-btn">Aggiungi Manualmente 📝</button>
+            </form>
+        </div>
+
     </div>
 
-    <button id="btnGira" onclick="avviaGiro()">GIRA LA RUOTA!</button>
+    <div class="footer-link" onclick="sbloccaAdmin()">Sblocca Funzioni di Gestione (PIN)</div>
 
     <script>
-        const canvas = document.getElementById('canvasRuota');
-        const ctx = canvas.getContext('2d'); // Il nostro "pennello" 2D
-
-        // Lista di test dei tuoi compagni (poi la prenderemo dal database!)
-        const studenti = ["Alibrandi", "Boemi", "Bertuccelli", "Celeste", "Galletta", "Soraci", "Cucinotta", "Perrone", "Manganaro", "Ficarra", "Forganni", "Bellinghieri", "Scalia", "Spagnolo", "Sansone", "Mazzeo"];
-        
-        // Colori in stile Catppuccin (Arch design)
-        const colori = ["#313244", "#45475a", "#585b70", "#181825"];
-
-        let angoloAttuale = 0;
-        let velocita = 0;
-        const attrito = 0.98; // Più è vicino a 1, più dura il giro
-        let inMovimento = false;
-
-        const centro = canvas.width / 2;
-        const raggio = canvas.width / 2;
-
-        // --- FUNZIONE PER DISEGNARE LA RUOTA ---
-        function disegnaRuota() {
-            const numeroStudenti = studenti.length;
-            const ampiezzaSpicchio = (2 * Math.PI) / numeroStudenti;
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            studenti.forEach((studente, i) => {
-                const angoloInizio = angoloAttuale + (i * ampiezzaSpicchio);
-                const angoloFine = angoloInizio + ampiezzaSpicchio;
-
-                // 1. Disegniamo lo spicchio colorato
-                ctx.beginPath();
-                ctx.fillStyle = colori[i % colori.length];
-                ctx.moveTo(centro, centro);
-                ctx.arc(centro, centro, raggio, angoloInizio, angoloFine);
-                ctx.lineTo(centro, centro);
-                ctx.fill();
-
-                // 2. Disegniamo il testo (il nome dello studente)
-                ctx.save(); // Salva lo stato attuale del disegno
-                ctx.translate(centro, centro); // Sposta il centro del disegno al centro della ruota
-                ctx.rotate(angoloInizio + ampiezzaSpicchio / 2); // Ruota fino a metà dello spicchio
-                
-                ctx.textAlign = "right";
-                ctx.fillStyle = "#cdd6f4";
-                ctx.font = "bold 14px sans-serif";
-                // Scriviamo il nome verso il bordo esterno della ruota
-                ctx.fillText(studente, raggio - 20, 5); 
-                
-                ctx.restore(); // Ripristina il disegno per lo spicchio successivo
-            });
-        }
-
-        // --- FUNZIONE CHE GESTISCE L'ANIMAZIONE FISICA ---
-        function aggiornaFisica() {
-            if (velocita > 0.001) {
-                angoloAttuale += velocita; // Fai girare la ruota
-                velocita *= attrito;      // Rallenta per via dell'attrito
-                disegnaRuota();
-                requestAnimationFrame(aggiornaFisica); // Richiama questa funzione al prossimo frame dello schermo
-            } else {
-                velocita = 0;
-                inMovimento = false;
-                calcolaVincitore();
-            }
-        }
-
-        // --- CALCOLA CHI VIENE INDICATO DALLA FRECCIA (in alto, a 270 gradi ovvero -90 gradi) ---
-       function calcolaVincitore() {
-    const numeroStudenti = studenti.length;
-    const ampiezzaSpicchio = (2 * Math.PI) / numeroStudenti;
-
-    // 1. Riduciamo l'angolo attuale all'interno di un singolo cerchio (da 0 a 2*PI)
-    const angoloGiroFinito = angoloAttuale % (2 * Math.PI);
-
-    // 2. La freccia è a 270 gradi (1.5 * Math.PI).
-    // Calcoliamo dove cade lo spicchio vincente invertendo il senso di rotazione.
-    let angoloTarget = (1.5 * Math.PI - angoloGiroFinito);
+    // Rileva in automatico se sei sul PC locale o online su Render
+    const BASE_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+        ? "http://localhost:3000" // Cambia in http://localhost:8000 se il tuo uvicorn locale usa la porta 8000
+        : "https://server-di-classe.onrender.com";
+    let studentiTotali = [];
+    let studentiAttiviPerIlGiro = [];
+    let pinGlobale = null;
     
-    // 3. Se l'angolo target è negativo, aggiungiamo 360 gradi (2 * Math.PI) per renderlo positivo
-    if (angoloTarget < 0) {
-        angoloTarget += 2 * Math.PI;
+    let datiStoricoSalvati = []; 
+    let mostraTuttoStorico = false;
+    
+    const canvas = document.getElementById("ruota");
+    const ctx = canvas.getContext("2d");
+
+    async function caricaDati() {
+        try {
+            const risp = await fetch(`${BASE_URL}/dati-interrogazioni`);
+            const dati = await risp.json();
+            
+            studentiTotali = dati.studenti;
+            datiStoricoSalvati = dati.storico || [];
+            
+            const griglia = document.getElementById("grigliaCheckStudenti");
+            if (griglia.children.length === 0) {
+                studentiTotali.forEach(st => {
+                    const label = document.createElement("label");
+                    label.className = "check-item";
+                    label.innerHTML = `
+                        <input type="checkbox" value="${st}" checked onchange="ricalcolaStudentiAttivi()">
+                        <span>${st}</span>
+                    `;
+                    griglia.appendChild(label);
+                });
+            }
+
+            ricalcolaStudentiAttivi();
+            
+            const selectSt = document.getElementById("selectStudente");
+            if (selectSt.children.length === 0) {
+                studentiTotali.forEach(st => {
+                    let opt = document.createElement("option");
+                    opt.value = st; opt.textContent = st;
+                    selectSt.appendChild(opt);
+                });
+            }
+
+            const codaLista = document.getElementById("codaLista");
+            codaLista.innerHTML = dati.in_coda.length === 0 ? "<p style='color:var(--text-muted);'>Nessuno in coda!</p>" : "";
+            dati.in_coda.forEach(item => {
+                const div = document.createElement("div");
+                div.className = "list-item";
+                const btnSposta = pinGlobale ? `<button onclick="spostaAStorico(${item.id})" class="btn-spunta">Spunta ✔</button>` : '';
+                div.innerHTML = `
+                    <div>
+                        <span class="badge badge-danger">${item.materia}</span>
+                        <strong>${item.studente}</strong> <small style="color:var(--text-muted);">(${item.giorno})</small>
+                        <span class="nota-esclusi">Esclusi al giro: ${item.esclusi_al_giro || 'Nessuno'}</span>
+                    </div>
+                    ${btnSposta}
+                `;
+                codaLista.appendChild(div);
+            });
+
+            renderizzaStoricoVisivo();
+
+        } catch (err) {
+            console.error("Errore comunicazione con il backend:", err);
+        }
     }
 
-    // 4. Ora dividiamo per l'ampiezza di uno spicchio per trovare l'indice esatto nell'array
-    const indiceVincitore = Math.floor(angoloTarget / ampiezzaSpicchio);
-    
-    // Sicurezza finale per evitare indici fuori scala (es. se arrotonda male a causa dei decimali di JS)
-    const indiceSicuro = (indiceVincitore % numeroStudenti + numeroStudenti) % numeroStudenti;
+    function renderizzaStoricoVisivo() {
+        const storicoLista = document.getElementById("storicoLista");
+        const btnMostraAltro = document.getElementById("btnMostraAltro");
+        
+        storicoLista.innerHTML = datiStoricoSalvati.length === 0 ? "<p style='color:var(--text-muted);'>Nessuno storico registrato.</p>" : "";
+        
+        const limite = 6;
+        const datiDaMostrare = mostraTuttoStorico ? datiStoricoSalvati : datiStoricoSalvati.slice(0, limite);
+        
+        datiDaMostrare.forEach((item, index) => {
+            const div = document.createElement("div");
+            div.className = `list-item ${index === 0 && !mostraTuttoStorico ? 'evidenza' : ''}`;
+            
+            const dataStringa = item.data_completato || "Recentemente";
 
-    const vincitore = studenti[indiceSicuro];
-    alert("Il sacrificato è: " + vincitore + "! 💀");
-}
-        // --- AVVIA IL GIRO ---
-        function avviaGiro() {
-            if (inMovimento) return; // Evita di cliccare mentre sta già girando
+            div.innerHTML = `
+                <div>
+                    <span class="badge badge-success">${item.materia}</span>
+                    <strong>${item.studente}</strong>
+                    <span class="nota-esclusi" style="color:var(--text-muted);">Esclusi al giro: ${item.esclusi_al_giro || 'Nessuno'}</span>
+                </div>
+                <div style="text-align: right; display: flex; flex-direction: column; gap: 4px;">
+                    <span style="font-size:0.8rem; color:var(--accent-yellow); font-weight:bold;">${index === 0 && !mostraTuttoStorico ? '🔥 ULTIMO' : 'REGISTRATO'}</span>
+                    <span style="font-size:0.75rem; color:var(--text-blue); font-style: italic;">📅 ${dataStringa}</span>
+                </div>
+            `;
+            storicoLista.appendChild(div);
+        });
 
-            inMovimento = true;
-            // Diamo un impulso di velocità casuale iniziale
-            velocita = Math.random() * 0.4 + 0.3; 
-            aggiornaFisica();
+        if (datiStoricoSalvati.length > limite) {
+            btnMostraAltro.style.display = "block";
+            btnMostraAltro.textContent = mostraTuttoStorico ? "Mostra Meno ⬆️" : `Mostra Altri (${datiStoricoSalvati.length - limite}) ⬇️`;
+        } else {
+            btnMostraAltro.style.display = "none";
+        }
+    }
+
+    function toggleMostraTuttoStorico() {
+        mostraTuttoStorico = !mostraTuttoStorico;
+        renderizzaStoricoVisivo();
+    }
+
+    function ricalcolaStudentiAttivi() {
+        const checkboxes = document.querySelectorAll("#grigliaCheckStudenti input[type='checkbox']");
+        studentiAttiviPerIlGiro = [];
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                studentiAttiviPerIlGiro.push(cb.value);
+            }
+        });
+        disegnaRuota();
+    }
+
+    function disegnaRuota() {
+        if (studentiAttiviPerIlGiro.length === 0) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#fff";
+            ctx.font = "14px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("Tutti esclusi! Spunta qualcuno 🎯", 160, 160);
+            return;
+        }
+        
+        const numSpicchi = studentiAttiviPerIlGiro.length;
+        const arco = (2 * Math.PI) / numSpicchi;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        for (let i = 0; i < numSpicchi; i++) {
+            const ang = (i * arco);
+            
+            const tonalita = (i * 360) / numSpicchi;
+            ctx.fillStyle = `hsl(${tonalita}, 65%, 50%)`;
+            ctx.beginPath();
+            ctx.moveTo(160, 160);
+            ctx.arc(160, 160, 150, ang, ang + arco);
+            ctx.lineTo(160, 160);
+            ctx.fill();
+            
+            ctx.save();
+            ctx.fillStyle = "#11111b"; 
+            ctx.translate(160, 160);
+            ctx.rotate(ang + arco / 2);
+            ctx.textAlign = "right";
+            ctx.font = "bold 13px sans-serif";
+            ctx.fillText(studentiAttiviPerIlGiro[i], 140, 5);
+            ctx.restore();
+        }
+    }
+
+    function giraLaRuota() {
+        if (!pinGlobale) {
+            alert("🔒 Azione protetta! Devi prima sbloccare le funzioni di gestione col PIN in fondo alla pagina.");
+            return;
         }
 
-        // Disegniamo la ruota ferma all'inizio
-        disegnaRuota();
-    </script>
+        if (studentiAttiviPerIlGiro.length === 0) return alert("Seleziona almeno uno studente!");
+        const btn = document.getElementById("btnGira");
+        btn.disabled = true;
+
+        const arrayCasuale = new Uint32Array(1);
+        window.crypto.getRandomValues(arrayCasuale);
+        const indiceVincente = arrayCasuale[0] % studentiAttiviPerIlGiro.length;
+        
+        const vincitore = studentiAttiviPerIlGiro[indiceVincente];
+        const numSpicchi = studentiAttiviPerIlGiro.length;
+        const arco = (2 * Math.PI) / numSpicchi;
+        const angoloSpicchio = indiceVincente * arco;
+        
+        const giriCompleti = 6 * 2 * Math.PI; 
+        const compensazioneFreccia = (3 / 2) * Math.PI; 
+        
+        const bufferOffset = new Uint32Array(1);
+        window.crypto.getRandomValues(bufferOffset);
+        const ratioCasuale = bufferOffset[0] / 4294967295; 
+        const offsetCasuale = (ratioCasuale * 0.6 + 0.2) * arco; 
+        
+        const rotazioneTotale = giriCompleti + compensazioneFreccia - angoloSpicchio - offsetCasuale;
+
+        const canvasRuota = document.getElementById("ruota");
+        canvasRuota.style.transition = "transform 4s cubic-bezier(0.1, 0.8, 0.1, 1)";
+        canvasRuota.style.transform = `rotate(${rotazioneTotale * (180 / Math.PI)}deg)`;
+
+        setTimeout(async () => {
+            btn.disabled = false;
+            alert(`🎯 Estratto: ${vincitore}!`);
+            
+            let esclusi = studentiTotali.filter(st => !studentiAttiviPerIlGiro.includes(st));
+            let stringaEsclusi = esclusi.length > 0 ? esclusi.join(", ") : "Nessuno";
+
+            await inviaInCodaBackend(vincitore, document.getElementById("materiaRuota").value, "Estratto Ruota", stringaEsclusi);
+            
+            canvasRuota.style.transition = "none";
+            canvasRuota.style.transform = "rotate(0deg)";
+            caricaDati();
+        }, 4000);
+    }
+
+    async function inviaInCodaBackend(studente, materia, giorno, esclusi = "Nessuno") {
+        const formData = new FormData();
+        formData.append("studente", studente);
+        formData.append("materia", materia);
+        formData.append("giorno", giorno);
+        formData.append("esclusi", esclusi);
+        formData.append("pin", pinGlobale);
+
+        const r = await fetch(`${BASE_URL}/aggiungi-in-coda`, { method: "POST", body: formData });
+        const risp = await r.json();
+        if (risp.stato !== "OK") alert(risp.messaggio);
+        caricaDati();
+    }
+
+    async function spostaAStorico(id) {
+        const formData = new FormData();
+        formData.append("coda_id", id);
+        formData.append("pin", pinGlobale);
+        
+        const adesso = new Date();
+        const dataFormattata = adesso.toLocaleDateString('it-IT', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+        formData.append("data_interrogazione", dataFormattata);
+
+        const r = await fetch(`${BASE_URL}/sposta-a-storico`, { method: "POST", body: formData });
+        const risp = await r.json();
+        if (risp.stato !== "OK") alert(risp.messaggio);
+        caricaDati();
+    }
+
+    function sbloccaAdmin() {
+        const pin = prompt("Inserisci il PIN del 'Dio Informatico':");
+        if (pin) {
+            pinGlobale = pin;
+            document.getElementById("formManuale").classList.add("visible");
+            caricaDati();
+        }
+    }
+
+    document.getElementById("formManuale").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const st = document.getElementById("selectStudente").value;
+        const mat = document.getElementById("selectMateria").value;
+        const giorno = document.getElementById("inputGiorno").value;
+        await inviaInCodaBackend(st, mat, giorno ? giorno : "Da definire", "Inserimento Manuale");
+    });
+
+    caricaDati();
+</script>
 </body>
 </html>

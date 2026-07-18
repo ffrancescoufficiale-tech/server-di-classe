@@ -29,12 +29,15 @@
                         <label for="materia">Materia</label>
                         <select id="materia" required>
                             <option value="Informatica">Informatica</option>
-                            <option value="Sistemi">Sistemi</option>
-                            <option value="TPSIT">TPSIT</option>
+                            <option value="Sistemi e Reti">Sistemi e Reti</option>
+                            <option value="TPSI">TPSI</option>
+                            <option value="COMPL.DI MATEMATICA">COMPL.DI Matematica</option>
                             <option value="Matematica">Matematica</option>
-                            <option value="Storia">Storia</option>
-                            <option value="Italiano">Italiano</option>
                             <option value="Inglese">Inglese</option>
+                            <option value="Italiano">Italiano</option>
+                            <option value="Storia">Storia</option>
+                            <option value="Telecomunicazioni">Telecomunicazioni</option>
+                            <option value="Scienze motorie">Scienze motorie</option>
                         </select>
                     </div>
 
@@ -60,7 +63,7 @@
         <section class="timeline-section">
             <h2 class="section-title">Scadenze in programma</h2>
             <div class="timeline" id="timelineEventi">
-                </div>
+            </div>
         </section>
 
     </main>
@@ -72,7 +75,12 @@
     <script>
         let pinGlobale = null;
 
-        // Funzione per mostrare il prompt del PIN e mostrare il form admin
+        // Se sei sul PC usa localhost, se sei online su GitHub Pages punta al backend di Render
+        const BASE_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+            ? "http://localhost:3000"
+            : "https://server-di-classe.onrender.com";
+
+        // Mostra il prompt del PIN e rende visibile il form admin
         function attivaAdmin() {
             const pin = prompt("Inserisci il PIN di gestione calendario:");
             if (pin) {
@@ -81,17 +89,17 @@
             }
         }
 
-        // Formatta la data in modo più carino (es. "18 Lug" o "Gio 18 Lug")
+        // Formatta la data (es. "Gio 18 Lug")
         function formattaData(dataStr) {
             const opzioni = { weekday: 'short', day: 'numeric', month: 'short' };
             const data = new Date(dataStr);
             return data.toLocaleDateString('it-IT', opzioni);
         }
 
-        // Scarica la lista delle scadenze dal server locale
+        // Scarica la lista delle scadenze dal server
         async function caricaCalendario() {
             try {
-                const risp = await fetch('http://localhost:3000/lista-eventi');
+                const risp = await fetch(`${BASE_URL}/lista-eventi`);
                 const eventi = await risp.json();
                 const container = document.getElementById('timelineEventi');
                 container.innerHTML = '';
@@ -107,7 +115,6 @@
 
                 eventi.forEach(ev => {
                     const card = document.createElement('div');
-                    // Combiniamo la classe base con quella specifica del tipo (es: event-card verifica)
                     card.className = `event-card ${ev.tipo}`;
                     card.innerHTML = `
                         <div class="event-details">
@@ -124,7 +131,7 @@
                 console.error("Errore di caricamento:", errore);
                 document.getElementById('timelineEventi').innerHTML = `
                     <div class="empty-state" style="color: #f38ba8;">
-                        <p>Impossibile connettersi al server. Assicurati che uvicorn sia attivo sulla porta 3000!</p>
+                        <p>Impossibile connettersi al server di Render. Controlla che il backend sia attivo!</p>
                     </div>
                 `;
             }
@@ -142,7 +149,7 @@
             formData.append('pin', pinGlobale);
 
             try {
-                const risp = await fetch('http://localhost:3000/aggiungi-evento', { 
+                const risp = await fetch(`${BASE_URL}/aggiungi-evento`, { 
                     method: 'POST', 
                     body: formData 
                 });
@@ -151,7 +158,6 @@
                 if (dati.stato === "OK") {
                     alert("Calendario aggiornato con successo!");
                     document.getElementById('eventForm').reset();
-                    // Nascondiamo di nuovo il pannello per sicurezza
                     document.getElementById('adminBox').classList.remove('visible');
                     pinGlobale = null;
                     caricaCalendario();
@@ -159,7 +165,7 @@
                     alert(dati.messaggio);
                 }
             } catch (errore) {
-                alert("Errore di connessione.");
+                alert("Errore di connessione con il server di Render.");
             }
         });
 

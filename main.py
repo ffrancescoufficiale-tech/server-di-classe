@@ -1,10 +1,9 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List
+from fastapi.staticfiles import StaticFiles
+from typing import List, Optional
 import json
 import os
-from fastapi import File, UploadFile, Form
-from fastapi.staticfiles import StaticFiles
 from database import inizializza_db, SessionLocal, MessaggioDB, UtenteDB, cifra_pin
 
 app = FastAPI()
@@ -18,39 +17,115 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-connessioni_attive: List[WebSocket] = []
+# --- CONFIGURAZIONI GLOBALI ---
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-# 2. Diciamo a FastAPI di rendere accessibile la cartella "uploads" via browser
-# Chiunque vada su http://localhost:3000/uploads/nomefile.pdf potrà scaricarlo!
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
-# Per ora usiamo una lista temporanea in memoria per i test degli appunti
-# (poi la collegheremo al database!)
-# Lista temporanea che ora tiene traccia anche del tipo di appunto
-bacheca_appunti = []
+connessioni_attive: List[WebSocket] = []
 
-# Il tuo PIN da "Dio Informatico" (cambialo con quello che usi davvero!)
-PIN_DIO_INFORMATICO = "1234" 
+# UNICO PIN DI CONTROLLO GENERALE (Usa questo per tutto: appunti, interrogazioni, calendario)
+PIN_DIO_INFORMATICO = "0742" 
+
+
+# --- STATO IN MEMORIA (Temporaneo prima del DB) ---
+bacheca_appunti = []
+calendario_classe = []
+
+# Tabelle per le Interrogazioni
+studenti_classe = ["Forganni F.", "Galletta A.", "Ficarra G.", "Cucinotta D.", "Soraci A.", "Manganaro G.", "Boemi M.", "Bellinghieri P.", "Celeste G.", "Mazzeo G.", "Perrone E.", "Bertuccelli F.", "Alibrandi P.", "Spagnolo C.", "La Rosa G.", "Sansone M.", "Scalia S."]
+interrogazioni_in_coda = []
+storico_interrogazioni = []
+
+id_coda_counter = 1
+id_storico_counter = 1
+
+
+# =========================================================================
+# 1. SEZIONE INTERROGAZIONI (Flusso Coda -> Storico con ultimi in evidenza)
+# =========================================================================
+
+@app.get("/dati-interrogazioni")
+async def ottieni_dati_interrogazioni():
+    return {
+        "studenti": studenti_classe,
+        "in_coda": interrogazioni_in_coda,
+        "storico": storico_interrogazioni
+    }
+
+@app.post("/aggiungi-in-coda")
+async def aggiungi_in_coda(
+    studente: str = Form(...),
+    materia: str = Form(...),
+    giorno: Optional[str] = Form(None),
+    esclusi: Optional[str] = Form(None), # <--- Nuova stringa ricevuta dal frontend
+    pin: str = Form(...)
+):
+    global id_coda_counter
+    if pin != PIN_DIO_INFORMATICO:
+        return {"stato": "ERRORE", "messaggio": "PIN Errato! 🔐"}
+    
+    # Se ci sono esclusi, creiamo una nota pulita, altrimenti scriviamo "Nessuno"
+    nota_esclusi = esclusi if esclusi and esclusi.strip() else "Nessuno"
+    
+    nuovo = {
+        "id": id_coda_counter,
+        "studente": studente,
+        "materia": materia,
+        "giorno": giorno if giorno and giorno.strip() else "Da definire",
+        "esclusi_al_giro": nota_esclusi # <--- Salviamo il record
+    }
+    interrogazioni_in_coda.append(nuovo)
+    id_coda_counter += 1
+    return {"stato": "OK", "messaggio": f"{studente} aggiunto ai candidati di {materia}!"}
+
+@app.post("/sposta-a-storico")
+async def sposta_a_storico(
+    coda_id: int = Form(...),
+    pin: str = Form(...),
+    data_interrogazione: Optional[str] = Form(None) # <--- Riceve la data dal frontend
+):
+    global id_storico_counter
+    if pin != PIN_DIO_INFORMATICO:
+        return {"stato": "ERRORE", "messaggio": "PIN Errato! 🔐"}
+    
+    for item in interrogazioni_in_coda:
+        if item["id"] == coda_id:
+            interrogazioni_in_coda.remove(item)
+            
+            archiviato = {
+                "id": id_storico_counter,
+                "studente": item["studente"],
+                "materia": item["materia"],
+                # Se il frontend passa la data usiamo quella, altrimenti fallback su "Recentemente"
+                "data_completato": data_interrogazione if data_interrogazione else "Recentemente",
+                "esclusi_al_giro": item.get("esclusi_al_giro", "Nessuno")
+            }
+            storico_interrogazioni.insert(0, archiviato) 
+            id_storico_counter += 1
+            return {"stato": "OK", "messaggio": "Studente spostato nello storico!"}
+            
+    return {"stato": "ERRORE", "messaggio": "Elemento non trovato in coda."}
+
+# =========================================================================
+# 2. SEZIONE BACHECA APPUNTI
+# =========================================================================
 
 @app.post("/upload-appunti")
 async def carica_appunto(
     titolo: str = Form(...),
     materia: str = Form(...),
     autore: str = Form(...),
-    tipo: str = Form(...), # "dio" o "normale"
-    pin: str = Form(None), # Il PIN passato dal frontend (opzionale per i normali)
+    tipo: str = Form(...), 
+    pin: Optional[str] = Form(None), 
     file: UploadFile = File(...)
 ):
     if not file.filename:
         return {"stato": "ERRORE", "messaggio": "Nessun file valido caricato."}
 
-    # Blocco di sicurezza: se il tipo è "dio", serve il PIN corretto
     if tipo == "dio":
         if pin != PIN_DIO_INFORMATICO:
             return {"stato": "ERRORE", "messaggio": "Non sei il Dio Informatico! Accesso negato. ⚡"}
-        # Forza l'autore a essere il tuo nome reale per evitare impersonificazioni
         autore = "Dio Informatico"
 
     try:
@@ -65,8 +140,8 @@ async def carica_appunto(
             "titolo": titolo,
             "materia": materia,
             "autore": autore,
-            "tipo": tipo, # Salviamo se è "dio" o "normale"
-            "file_url": f"http://localhost:3000/uploads/{file.filename}"
+            "tipo": tipo, 
+            "file_url": f"https://server-di-classe.onrender.com/uploads/{file.filename}"
         }
         
         bacheca_appunti.append(nuovo_appunto)
@@ -74,10 +149,49 @@ async def carica_appunto(
         
     except Exception as e:
         return {"stato": "ERRORE", "messaggio": f"Errore: {str(e)}"}
+
 @app.get("/lista-appunti")
 async def ottieni_appunti():
-    # Restituisce la lista di tutti gli appunti caricati
     return bacheca_appunti
+
+
+# =========================================================================
+# 3. SEZIONE CALENDARIO COMPITI
+# =========================================================================
+
+@app.post("/aggiungi-evento")
+async def aggiungi_evento(
+    titolo: str = Form(...),       
+    materia: str = Form(...),      
+    data: str = Form(...),         
+    tipo: str = Form(...),         
+    pin: str = Form(...)           
+):
+    if pin != PIN_DIO_INFORMATICO:
+        return {"stato": "ERRORE", "messaggio": "Non hai i permessi per modificare il calendario! 🔐"}
+        
+    nuovo_evento = {
+        "id": len(calendario_classe) + 1,
+        "titolo": titolo,
+        "materia": materia,
+        "data": data,
+        "tipo": tipo
+    }
+    
+    calendario_classe.append(nuovo_evento)
+    calendario_classe.sort(key=lambda x: x['data'])
+    
+    return {"stato": "OK", "messaggio": "Evento aggiunto al calendario!", "evento": nuovo_evento}
+
+@app.get("/lista-eventi")
+async def ottieni_eventi():
+    return calendario_classe
+
+
+# =========================================================================
+# 4. CHAT LIVE (WEBSOCKET & DB SECURITY)
+# =========================================================================
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
@@ -100,7 +214,7 @@ async def websocket_endpoint(websocket: WebSocket):
             dati_ricevuti = await websocket.receive_text()
             payload = json.loads(dati_ricevuti)
             
-            tipo_azione = payload.get("azione", "messaggio") # "messaggio", "registra_pin", "verifica_pin"
+            tipo_azione = payload.get("azione", "messaggio") 
             mittente = payload.get("mittente", "").strip()
             token = payload.get("token", "").strip()
             
@@ -111,7 +225,7 @@ async def websocket_endpoint(websocket: WebSocket):
             try:
                 utente = db.query(UtenteDB).filter(UtenteDB.nickname == mittente).first()
 
-                # --- CASO 1: NUOVO UTENTE (Richiesta di creazione PIN) ---
+                # --- CASO 1: NUOVO UTENTE (Creazione PIN dispositivo) ---
                 if utente is None:
                     if tipo_azione == "registra_pin":
                         pin = payload.get("pin", "")
@@ -127,27 +241,25 @@ async def websocket_endpoint(websocket: WebSocket):
                         else:
                             await websocket.send_text(json.dumps({"stato": "ERRORE_PIN", "info": "Il PIN deve essere di almeno 4 cifre!"}))
                     else:
-                        # Diciamo al frontend che il nick è nuovo e serve un PIN
                         await websocket.send_text(json.dumps({"stato": "RICHIEDI_CREAZIONE_PIN"}))
                     continue
 
-                # --- CASO 2: UTENTE ESISTENTE MA TOKEN DIVERSO (Richiesta Sblocco) ---
+                # --- CASO 2: UTENTE ESISTENTE MA DISPOSITIVO DIVERSO (Sblocco) ---
                 if utente.token != token:
                     if tipo_azione == "verifica_pin":
                         pin_inserito = payload.get("pin", "")
-                        if str(utente.pin_hash) != cifra_pin(pin_inserito):
-                            # PIN Corretto! Aggiorniamo il token dell'utente autorizzando il nuovo dispositivo
+                        # NOTA: qui ho corretto la logica di controllo hash che avevi invertito
+                        if str(utente.pin_hash) == cifra_pin(pin_inserito):
                             utente.token = token
                             db.commit()
                             await websocket.send_text(json.dumps({"stato": "SBLOCCATO", "info": "Dispositivo autorizzato!"}))
                         else:
                             await websocket.send_text(json.dumps({"stato": "ERRORE_PIN", "info": "PIN errato! Accesso negato."}))
                     else:
-                        # Chiediamo al frontend di mostrare il pop-up del PIN
                         await websocket.send_text(json.dumps({"stato": "RICHIEDI_SBLOCCO_PIN"}))
                     continue
 
-                # --- CASO 3: TUTTO OK (Invio messaggio) ---
+                # --- CASO 3: INVIO MESSAGGIO AUTORIZZATO ---
                 if tipo_azione == "messaggio":
                     contenuto = payload.get("contenuto", "").strip()
                     if contenuto:
@@ -162,47 +274,9 @@ async def websocket_endpoint(websocket: WebSocket):
                                 "storico": False
                             }))
             except Exception as e:
-                print(f"Errore: {e}")
+                print(f"Errore nella gestione della richiesta WS: {e}")
             finally:
                 db.close()
                     
     except WebSocketDisconnect:
         connessioni_attive.remove(websocket)
-
-
-
-# Lista temporanea in memoria per il calendario della classe
-calendario_classe = []
-
-# Il tuo PIN da "Dio Informatico" (assicurati che coincida con quello che usi per gli appunti!)
-PIN_DIO_INFORMATICO = "1234" 
-
-@app.post("/aggiungi-evento")
-async def aggiungi_evento(
-    titolo: str = Form(...),       # Es. "Compito in classe di Informatica"
-    materia: str = Form(...),      # Es. "Informatica"
-    data: str = Form(...),         # Data in formato YYYY-MM-DD
-    tipo: str = Form(...),         # "verifica", "interrogazione", "compito"
-    pin: str = Form(...)           # PIN di sicurezza obbligatorio
-):
-    if pin != PIN_DIO_INFORMATICO:
-        return {"stato": "ERRORE", "messaggio": "Non hai i permessi per modificare il calendario! 🔐"}
-        
-    nuovo_evento = {
-        "id": len(calendario_classe) + 1,
-        "titolo": titolo,
-        "materia": materia,
-        "data": data,
-        "tipo": tipo
-    }
-    
-    calendario_classe.append(nuovo_evento)
-    
-    # Ordiniamo la lista per data, così i compiti più vicini appaiono sempre per primi!
-    calendario_classe.sort(key=lambda x: x['data'])
-    
-    return {"stato": "OK", "messaggio": "Evento aggiunto al calendario!", "evento": nuovo_evento}
-
-@app.get("/lista-eventi")
-async def ottieni_eventi():
-    return calendario_classe
