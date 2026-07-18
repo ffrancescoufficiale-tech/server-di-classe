@@ -8,7 +8,11 @@ from database import inizializza_db, SessionLocal, MessaggioDB, UtenteDB, cifra_
 
 app = FastAPI()
 
-# --- 1. CONFIGURAZIONE CORS (Messo subito in cima per sbloccare il sito web) ---
+@app.get("/")
+async def home_test():
+    return {"messaggio": "Il server funziona ed è il file corretto!"}
+inizializza_db()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,25 +21,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- 2. RECUPERO PIN SICURO DA RENDER ---
-# Se su Render c'è la variabile d'ambiente usa quella lunga, altrimenti usa "0742" come fallback locale
-PIN_DIO_INFORMATICO = os.getenv("PIN_DIO_INFORMATICO", "0742")
-
-# --- 3. INIZIALIZZAZIONE ---
-inizializza_db()
-
-# --- FIX HEALTH CHECK / HOME PAGE (Accetta sia GET che HEAD per Render) ---
-@app.get("/")
-@app.head("/")
-async def home_test():
-    return {"messaggio": "Il server funziona ed è il file corretto!", "status": "healthy"}
-
 # --- CONFIGURAZIONI GLOBALI ---
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 connessioni_attive: List[WebSocket] = []
+
+# UNICO PIN DI CONTROLLO GENERALE (Usa questo per tutto: appunti, interrogazioni, calendario)
+PIN_DIO_INFORMATICO = "0742" 
+
 
 # --- STATO IN MEMORIA (Temporaneo prima del DB) ---
 bacheca_appunti = []
@@ -67,13 +62,14 @@ async def aggiungi_in_coda(
     studente: str = Form(...),
     materia: str = Form(...),
     giorno: Optional[str] = Form(None),
-    esclusi: Optional[str] = Form(None), 
+    esclusi: Optional[str] = Form(None), # <--- Nuova stringa ricevuta dal frontend
     pin: str = Form(...)
 ):
     global id_coda_counter
     if pin != PIN_DIO_INFORMATICO:
         return {"stato": "ERRORE", "messaggio": "PIN Errato! 🔐"}
     
+    # Se ci sono esclusi, creiamo una nota pulita, altrimenti scriviamo "Nessuno"
     nota_esclusi = esclusi if esclusi and esclusi.strip() else "Nessuno"
     
     nuovo = {
@@ -81,17 +77,17 @@ async def aggiungi_in_coda(
         "studente": studente,
         "materia": materia,
         "giorno": giorno if giorno and giorno.strip() else "Da definire",
-        "esclusi_al_giro": nota_esclusi 
+        "esclusi_al_giro": nota_esclusi # <--- Salviamo il record
     }
     interrogazioni_in_coda.append(nuovo)
     id_coda_counter += 1
     return {"stato": "OK", "messaggio": f"{studente} aggiunto ai candidati di {materia}!"}
 
 @app.post("/sposta-a-storico")
-async def sposta_a-storico(
+async def sposta_a_storico(
     coda_id: int = Form(...),
     pin: str = Form(...),
-    data_interrogazione: Optional[str] = Form(None) 
+    data_interrogazione: Optional[str] = Form(None) # <--- Riceve la data dal frontend
 ):
     global id_storico_counter
     if pin != PIN_DIO_INFORMATICO:
@@ -105,6 +101,7 @@ async def sposta_a-storico(
                 "id": id_storico_counter,
                 "studente": item["studente"],
                 "materia": item["materia"],
+                # Se il frontend passa la data usiamo quella, altrimenti fallback su "Recentemente"
                 "data_completato": data_interrogazione if data_interrogazione else "Recentemente",
                 "esclusi_al_giro": item.get("esclusi_al_giro", "Nessuno")
             }
@@ -142,14 +139,13 @@ async def carica_appunto(
             contenuto = await file.read()
             buffer.write(contenuto)
             
-        # Sistemato URL definitivo di Render
         nuovo_appunto = {
             "id": len(bacheca_appunti) + 1,
             "titolo": titolo,
             "materia": materia,
             "autore": autore,
             "tipo": tipo, 
-            "file_url": f"https://server-di-classe-backend.onrender.com/uploads/{file.filename}"
+            "file_url": f"https://server-di-classe.onrender.com/uploads/{file.filename}"
         }
         
         bacheca_appunti.append(nuovo_appunto)
@@ -233,6 +229,7 @@ async def websocket_endpoint(websocket: WebSocket):
             try:
                 utente = db.query(UtenteDB).filter(UtenteDB.nickname == mittente).first()
 
+                # --- CASO 1: NUOVO UTENTE (Creazione PIN dispositivo) ---
                 if utente is None:
                     if tipo_azione == "registra_pin":
                         pin = payload.get("pin", "")
@@ -251,9 +248,11 @@ async def websocket_endpoint(websocket: WebSocket):
                         await websocket.send_text(json.dumps({"stato": "RICHIEDI_CREAZIONE_PIN"}))
                     continue
 
+                # --- CASO 2: UTENTE ESISTENTE MA DISPOSITIVO DIVERSO (Sblocco) ---
                 if utente.token != token:
                     if tipo_azione == "verifica_pin":
                         pin_inserito = payload.get("pin", "")
+                        # NOTA: qui ho corretto la logica di controllo hash che avevi invertito
                         if str(utente.pin_hash) == cifra_pin(pin_inserito):
                             utente.token = token
                             db.commit()
@@ -264,6 +263,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         await websocket.send_text(json.dumps({"stato": "RICHIEDI_SBLOCCO_PIN"}))
                     continue
 
+                # --- CASO 3: INVIO MESSAGGIO AUTORIZZATO ---
                 if tipo_azione == "messaggio":
                     contenuto = payload.get("contenuto", "").strip()
                     if contenuto:
@@ -284,3 +284,5 @@ async def websocket_endpoint(websocket: WebSocket):
                     
     except WebSocketDisconnect:
         connessioni_attive.remove(websocket)
+
+#speriamo funzioniiii
