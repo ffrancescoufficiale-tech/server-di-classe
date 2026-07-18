@@ -7,6 +7,10 @@ import os
 from database import inizializza_db, SessionLocal, MessaggioDB, UtenteDB, cifra_pin
 
 app = FastAPI()
+
+@app.get("/")
+async def home_test():
+    return {"messaggio": "Il server funziona ed è il file corretto!"}
 inizializza_db()
 
 app.add_middleware(
