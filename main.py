@@ -284,3 +284,5 @@ async def websocket_endpoint(websocket: WebSocket):
                     
     except WebSocketDisconnect:
         connessioni_attive.remove(websocket)
+
+#speriamo funzioniiii
