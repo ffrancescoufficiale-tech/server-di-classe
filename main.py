@@ -4,13 +4,21 @@ from fastapi.staticfiles import StaticFiles
 from typing import List, Optional
 import json
 import os
+import time
 from database import inizializza_db, SessionLocal, MessaggioDB, UtenteDB, cifra_pin
+from supabase import create_client, Client
 
 app = FastAPI()
+
+# Configurazione Supabase con chiavi di fallback
+SUPABASE_URL = os.environ.get("SUPABASE_URL") or "https://yuuubmiwsiiudbrameys.supabase.co"
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY") or "sb_publishable_bkFPdaZx-LRYlSKv3MIceA_Qb3wdEy3"
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 @app.get("/")
 async def home_test():
     return {"messaggio": "Il server funziona ed è il file corretto!"}
+
 inizializza_db()
 
 app.add_middleware(
@@ -28,91 +36,80 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 connessioni_attive: List[WebSocket] = []
 
-# UNICO PIN DI CONTROLLO GENERALE (Usa questo per tutto: appunti, interrogazioni, calendario)
+# UNICO PIN DI CONTROLLO GENERALE
 PIN_DIO_INFORMATICO = "0742" 
 
-
-# --- STATO IN MEMORIA (Temporaneo prima del DB) ---
-bacheca_appunti = []
-calendario_classe = []
-
-# Tabelle per le Interrogazioni
+# Lista studenti fissa
 studenti_classe = ["Forganni F.", "Galletta A.", "Ficarra G.", "Cucinotta D.", "Soraci A.", "Manganaro G.", "Boemi M.", "Bellinghieri P.", "Celeste G.", "Mazzeo G.", "Perrone E.", "Bertuccelli F.", "Alibrandi P.", "Spagnolo C.", "La Rosa G.", "Sansone M.", "Scalia S."]
-interrogazioni_in_coda = []
-storico_interrogazioni = []
 
-id_coda_counter = 1
-id_storico_counter = 1
+calendario_classe = [] # Puoi spostarlo su Supabase in seguito se ti serve
 
 
 # =========================================================================
-# 1. SEZIONE INTERROGAZIONI (Flusso Coda -> Storico con ultimi in evidenza)
+# 1. SEZIONE INTERROGAZIONI (Permanente su Supabase Cloud)
 # =========================================================================
 
 @app.get("/dati-interrogazioni")
 async def ottieni_dati_interrogazioni():
-    return {
-        "studenti": studenti_classe,
-        "in_coda": interrogazioni_in_coda,
-        "storico": storico_interrogazioni
-    }
+    try:
+        in_coda_res = supabase.table("interrogazioni").select("*").eq("stato", "in_coda").order("created_at").execute()
+        storico_res = supabase.table("interrogazioni").select("*").eq("stato", "completato").order("updated_at", desc=True).execute()
+        
+        return {
+            "studenti": studenti_classe,
+            "in_coda": in_coda_res.data,
+            "storico": storico_res.data
+        }
+    except Exception as e:
+        return {"studenti": studenti_classe, "in_coda": [], "storico": []}
 
 @app.post("/aggiungi-in-coda")
 async def aggiungi_in_coda(
     studente: str = Form(...),
     materia: str = Form(...),
     giorno: Optional[str] = Form(None),
-    esclusi: Optional[str] = Form(None), # <--- Nuova stringa ricevuta dal frontend
+    esclusi: Optional[str] = Form(None),
     pin: str = Form(...)
 ):
-    global id_coda_counter
     if pin != PIN_DIO_INFORMATICO:
         return {"stato": "ERRORE", "messaggio": "PIN Errato! 🔐"}
     
-    # Se ci sono esclusi, creiamo una nota pulita, altrimenti scriviamo "Nessuno"
     nota_esclusi = esclusi if esclusi and esclusi.strip() else "Nessuno"
     
-    nuovo = {
-        "id": id_coda_counter,
-        "studente": studente,
-        "materia": materia,
-        "giorno": giorno if giorno and giorno.strip() else "Da definire",
-        "esclusi_al_giro": nota_esclusi # <--- Salviamo il record
-    }
-    interrogazioni_in_coda.append(nuovo)
-    id_coda_counter += 1
-    return {"stato": "OK", "messaggio": f"{studente} aggiunto ai candidati di {materia}!"}
+    try:
+        supabase.table("interrogazioni").insert({
+            "studente": studente,
+            "materia": materia,
+            "giorno": giorno if giorno and giorno.strip() else "Da definire",
+            "esclusi_al_giro": nota_esclusi,
+            "stato": "in_coda"
+        }).execute()
+        return {"stato": "OK", "messaggio": f"{studente} aggiunto ai candidati di {materia}!"}
+    except Exception as e:
+        return {"stato": "ERRORE", "messaggio": str(e)}
 
 @app.post("/sposta-a-storico")
 async def sposta_a_storico(
     coda_id: int = Form(...),
     pin: str = Form(...),
-    data_interrogazione: Optional[str] = Form(None) # <--- Riceve la data dal frontend
+    data_interrogazione: Optional[str] = Form(None)
 ):
-    global id_storico_counter
     if pin != PIN_DIO_INFORMATICO:
         return {"stato": "ERRORE", "messaggio": "PIN Errato! 🔐"}
     
-    for item in interrogazioni_in_coda:
-        if item["id"] == coda_id:
-            interrogazioni_in_coda.remove(item)
-            
-            archiviato = {
-                "id": id_storico_counter,
-                "studente": item["studente"],
-                "materia": item["materia"],
-                # Se il frontend passa la data usiamo quella, altrimenti fallback su "Recentemente"
-                "data_completato": data_interrogazione if data_interrogazione else "Recentemente",
-                "esclusi_al_giro": item.get("esclusi_al_giro", "Nessuno")
-            }
-            storico_interrogazioni.insert(0, archiviato) 
-            id_storico_counter += 1
-            return {"stato": "OK", "messaggio": "Studente spostato nello storico!"}
-            
-    return {"stato": "ERRORE", "messaggio": "Elemento non trovato in coda."}
+    try:
+        supabase.table("interrogazioni").update({
+            "stato": "completato",
+            "data_completato": data_interrogazione if data_interrogazione else "Recentemente"
+        }).eq("id", coda_id).execute()
+        
+        return {"stato": "OK", "messaggio": "Studente spostato nello storico!"}
+    except Exception as e:
+        return {"stato": "ERRORE", "messaggio": str(e)}
+
 
 # =========================================================================
-# 2. SEZIONE BACHECA APPUNTI
+# 2. SEZIONE BACHECA APPUNTI (Con Cloud Storage Infinito per PDF/Foto)
 # =========================================================================
 
 @app.post("/upload-appunti")
@@ -133,30 +130,39 @@ async def carica_appunto(
         autore = "Dio Informatico"
 
     try:
-        percorso_file = os.path.join(UPLOAD_DIR, file.filename)
-        
-        with open(percorso_file, "wb") as buffer:
-            contenuto = await file.read()
-            buffer.write(contenuto)
-            
-        nuovo_appunto = {
-            "id": len(bacheca_appunti) + 1,
+        nome_unico_file = f"{int(time.time())}-{file.filename}"
+        contenuto_file = await file.read()
+
+# 1. Carica il file binario nel bucket Storage di Supabase
+        supabase.storage.from_("appunti-files").upload(
+            path=nome_unico_file,
+            file=contenuto_file
+        )
+        # 2. Ottieni l'URL pubblico del file
+        url_res = supabase.storage.from_("appunti-files").get_public_url(nome_unico_file)
+
+        # 3. Salva i metadati nel database SQL di Supabase
+        supabase.table("files_salvati").insert({
             "titolo": titolo,
             "materia": materia,
             "autore": autore,
-            "tipo": tipo, 
-            "file_url": f"https://server-di-classe.onrender.com/uploads/{file.filename}"
-        }
+            "tipo": tipo,
+            "url_file": url_res,
+            "nome_originale": file.filename
+        }).execute()
         
-        bacheca_appunti.append(nuovo_appunto)
-        return {"stato": "OK", "messaggio": "Appunto caricato con successo!", "appunto": nuovo_appunto}
+        return {"stato": "OK", "messaggio": "Appunto caricato sul Cloud con successo!"}
         
     except Exception as e:
-        return {"stato": "ERRORE", "messaggio": f"Errore: {str(e)}"}
+        return {"stato": "ERRORE", "messaggio": f"Errore Cloud: {str(e)}"}
 
 @app.get("/lista-appunti")
 async def ottieni_appunti():
-    return bacheca_appunti
+    try:
+        res = supabase.table("files_salvati").select("*").order("created_at", desc=True).execute()
+        return res.data
+    except Exception as e:
+        return []
 
 
 # =========================================================================
@@ -229,7 +235,6 @@ async def websocket_endpoint(websocket: WebSocket):
             try:
                 utente = db.query(UtenteDB).filter(UtenteDB.nickname == mittente).first()
 
-                # --- CASO 1: NUOVO UTENTE (Creazione PIN dispositivo) ---
                 if utente is None:
                     if tipo_azione == "registra_pin":
                         pin = payload.get("pin", "")
@@ -248,11 +253,9 @@ async def websocket_endpoint(websocket: WebSocket):
                         await websocket.send_text(json.dumps({"stato": "RICHIEDI_CREAZIONE_PIN"}))
                     continue
 
-                # --- CASO 2: UTENTE ESISTENTE MA DISPOSITIVO DIVERSO (Sblocco) ---
                 if utente.token != token:
                     if tipo_azione == "verifica_pin":
                         pin_inserito = payload.get("pin", "")
-                        # NOTA: qui ho corretto la logica di controllo hash che avevi invertito
                         if str(utente.pin_hash) == cifra_pin(pin_inserito):
                             utente.token = token
                             db.commit()
@@ -263,7 +266,6 @@ async def websocket_endpoint(websocket: WebSocket):
                         await websocket.send_text(json.dumps({"stato": "RICHIEDI_SBLOCCO_PIN"}))
                     continue
 
-                # --- CASO 3: INVIO MESSAGGIO AUTORIZZATO ---
                 if tipo_azione == "messaggio":
                     contenuto = payload.get("contenuto", "").strip()
                     if contenuto:
@@ -284,5 +286,3 @@ async def websocket_endpoint(websocket: WebSocket):
                     
     except WebSocketDisconnect:
         connessioni_attive.remove(websocket)
-
-#speriamo funzioniiii
