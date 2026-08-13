@@ -196,10 +196,10 @@ async def carica_appunto(
 async def ottieni_appunti():
     try:
         res = supabase.table("files_salvati").select("*").order("id", desc=True).execute()
-        return {"stato": "OK", "appunti": res.data}
+        return res.data  # array puro, come /lista-eventi
     except Exception as e:
         print(f"[lista-appunti] ERRORE: {e}")
-        return {"stato": "ERRORE", "messaggio": str(e), "appunti": []}
+        return []
 
 
 # =========================================================================
