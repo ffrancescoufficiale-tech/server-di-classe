@@ -44,7 +44,7 @@ connessioni_attive: List[WebSocket] = []
 
 # PIN spostato in variabile d'ambiente: NON lasciare il valore reale nel
 # codice sorgente se il repository è (o potrebbe diventare) pubblico.
-PIN_DIO_INFORMATICO = os.environ.get("PIN_DIO_INFORMATICO", "0742")
+PIN_DIO_INFORMATICO = ( "0742")
 
 studenti_classe = ["Forganni F.", "Galletta A.", "Ficarra G.", "Cucinotta D.", "Soraci A.", "Manganaro G.", "Boemi M.", "Bellinghieri P.", "Celeste G.", "Mazzeo G.", "Perrone E.", "Bertuccelli F.", "Alibrandi P.", "Spagnolo C.", "La Rosa G.", "Sansone M.", "Scalia S."]
 
