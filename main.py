@@ -206,33 +206,55 @@ async def ottieni_appunti():
 # 3. SEZIONE CALENDARIO COMPITI
 # =========================================================================
 
+# --- SEZIONE CALENDARIO COMPITI (PERSISTENTE) ---
+
 @app.post("/aggiungi-evento")
 async def aggiungi_evento(
-    titolo: str = Form(...),
-    materia: str = Form(...),
-    data: str = Form(...),
-    tipo: str = Form(...),
-    pin: str = Form(...)
+    titolo: str = Form(...),       
+    materia: str = Form(...),      
+    data: str = Form(...),         
+    tipo: str = Form(...),         
+    pin: str = Form(...)           
 ):
     if pin != PIN_DIO_INFORMATICO:
         return {"stato": "ERRORE", "messaggio": "Non hai i permessi per modificare il calendario! 🔐"}
-
-    nuovo_evento = {
-        "id": len(calendario_classe) + 1,
-        "titolo": titolo,
-        "materia": materia,
-        "data": data,
-        "tipo": tipo
-    }
-
-    calendario_classe.append(nuovo_evento)
-    calendario_classe.sort(key=lambda x: x['data'])
-
-    return {"stato": "OK", "messaggio": "Evento aggiunto al calendario!", "evento": nuovo_evento}
+    
+    try:
+        # Ora punta alla tabella 'eventi'
+        supabase.table("eventi").insert({
+            "titolo": titolo,
+            "materia": materia,
+            "data": data,
+            "tipo": tipo
+        }).execute()
+        
+        return {"stato": "OK", "messaggio": "Evento salvato nel cloud!"}
+    except Exception as e:
+        return {"stato": "ERRORE", "messaggio": str(e)}
 
 @app.get("/lista-eventi")
 async def ottieni_eventi():
-    return calendario_classe
+    try:
+        # Ora legge dalla tabella 'eventi'
+        res = supabase.table("eventi").select("*").order("data").execute()
+        return res.data
+    except Exception as e:
+        return []
+
+@app.post("/elimina-evento")
+async def elimina_evento(
+    evento_id: int = Form(...),
+    pin: str = Form(...)
+):
+    if pin != PIN_DIO_INFORMATICO:
+        return {"stato": "ERRORE", "messaggio": "Non autorizzato! 🔐"}
+    
+    try:
+        # Elimina dalla tabella 'eventi'
+        supabase.table("eventi").delete().eq("id", evento_id).execute()
+        return {"stato": "OK", "messaggio": "Evento rimosso con successo!"}
+    except Exception as e:
+        return {"stato": "ERRORE", "messaggio": str(e)}
 
 
 # =========================================================================
