@@ -37,7 +37,7 @@
 
     <script>
         async function caricaLista() {
-            const risp = await fetch('http://localhost:3000/lista-appunti');
+            const risp = await fetch('https://server-di-classe-backend.onrender.com/lista-appunti');
             const tutti = await risp.json();
             const container = document.getElementById('listaCondivisa');
             container.innerHTML = '';
@@ -58,7 +58,7 @@
                         <h4 style="margin:0 0 5px 0; color:#89b4fa;">${a.titolo}</h4>
                         <span class="meta">Materia: <b>${a.materia}</b> | Caricato da: <i>${a.autore}</i></span>
                     </div>
-                    <a href="${a.file_url}" target="_blank" class="download-btn">Scarica</a>
+                    <a href="${a.url_file}" target="_blank" class="download-btn">Scarica</a>
                 `;
                 container.appendChild(card);
             });
