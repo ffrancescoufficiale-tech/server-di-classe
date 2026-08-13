@@ -148,7 +148,8 @@ async def carica_appunto(
             "autore": autore,
             "tipo": tipo,
             "url_file": url_res,
-            "nome_originale": file.filename
+            "nome_originale": file.filename,
+            "caricato_da": autore
         }).execute()
         
         return {"stato": "OK", "messaggio": "Appunto caricato sul Cloud con successo!"}
