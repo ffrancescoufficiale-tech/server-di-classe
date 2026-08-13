@@ -124,20 +124,24 @@ async def carica_appunto(
     if not file.filename:
         return {"stato": "ERRORE", "messaggio": "Nessun file valido caricato."}
 
+    # LOGICA CORRETTA PER AUTORE
     if tipo == "dio":
         if pin != PIN_DIO_INFORMATICO:
-            return {"stato": "ERRORE", "messaggio": "Non sei il Dio Informatico! Accesso negato. ⚡"}
-        autore = "Dio Informatico"
+            return {"stato": "ERRORE", "messaggio": "PIN Dio errato! 🔐"}
+        autore_effettivo = "Dio Informatico"
+    else:
+        autore_effettivo = autore if autore and autore.strip() else "Studente Anonimo"
 
     try:
         nome_unico_file = f"{int(time.time())}-{file.filename}"
         contenuto_file = await file.read()
 
-# 1. Carica il file binario nel bucket Storage di Supabase
+        # 1. Carica il file binario nel bucket Storage di Supabase
         supabase.storage.from_("appunti-files").upload(
             path=nome_unico_file,
             file=contenuto_file
         )
+
         # 2. Ottieni l'URL pubblico del file
         url_res = supabase.storage.from_("appunti-files").get_public_url(nome_unico_file)
 
@@ -145,25 +149,17 @@ async def carica_appunto(
         supabase.table("files_salvati").insert({
             "titolo": titolo,
             "materia": materia,
-            "autore": autore,
+            "autore": autore_effettivo,
             "tipo": tipo,
             "url_file": url_res,
             "nome_originale": file.filename,
-            "caricato_da": autore
+            "caricato_da": autore_effettivo
         }).execute()
         
-        return {"stato": "OK", "messaggio": "Appunto caricato sul Cloud con successo!"}
+        return {"stato": "OK", "messaggio": "Appunto caricato con successo!"}
         
     except Exception as e:
         return {"stato": "ERRORE", "messaggio": f"Errore Cloud: {str(e)}"}
-
-@app.get("/lista-appunti")
-async def ottieni_appunti():
-    try:
-        res = supabase.table("files_salvati").select("*").order("created_at", desc=True).execute()
-        return res.data
-    except Exception as e:
-        return []
 
 
 # =========================================================================
