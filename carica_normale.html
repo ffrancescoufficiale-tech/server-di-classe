@@ -62,7 +62,7 @@
             formData.append('file', document.getElementById('file').files[0]);
 
  try {
-    const risp = await fetch('https://server-di-classe-backend.onrender.com', { method: 'POST', body: formData });
+    const risp = await fetch('https://server-di-classe-backend.onrender.com/upload-appunti', { method: 'POST', body: formData });
     const dati = await risp.json();
     console.log("STATUS:", risp.status, "BODY:", dati);  // <-- aggiungi questa riga
     if(dati.stato === "OK") {
