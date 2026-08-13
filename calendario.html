@@ -5,6 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📅 Verifiche & Compiti</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Stile rapido per il tasto elimina (puoi metterlo anche nel tuo style.css) */
+        .delete-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 5px;
+            margin-left: 10px;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .delete-btn:hover {
+            opacity: 1;
+        }
+        .event-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
 </head>
 <body>
 
@@ -95,7 +116,7 @@
             const data = new Date(dataStr);
             return data.toLocaleDateString('it-IT', opzioni);
         }
-//speriamo funzioni parte 3
+
         // Scarica la lista delle scadenze dal server
         async function caricaCalendario() {
             try {
@@ -121,8 +142,11 @@
                             <span class="badge-materia">${ev.materia}</span>
                             <h3 class="event-title">${ev.titolo}</h3>
                         </div>
-                        <div class="event-date">
-                            ${formattaData(ev.data)}
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div class="event-date">
+                                ${formattaData(ev.data)}
+                            </div>
+                            <button class="delete-btn" onclick="eliminaEvento(${ev.id})" title="Elimina scadenza">🗑️</button>
                         </div>
                     `;
                     container.appendChild(card);
@@ -134,6 +158,33 @@
                         <p>Impossibile connettersi al server di Render. Controlla che il backend sia attivo!</p>
                     </div>
                 `;
+            }
+        }
+
+        // Funzione per eliminare l'evento manualmente
+        async function eliminaEvento(id) {
+            const pin = prompt("Inserisci il PIN del Dio Informatico per rimuovere l'evento:");
+            if (!pin) return;
+
+            const formData = new FormData();
+            formData.append('evento_id', id);
+            formData.append('pin', pin);
+
+            try {
+                const risp = await fetch(`${BASE_URL}/elimina-evento`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const dati = await risp.json();
+
+                if (dati.stato === "OK") {
+                    alert("Scadenza rimossa con successo!");
+                    caricaCalendario(); // Ricarica la lista aggiornata
+                } else {
+                    alert(dati.messaggio);
+                }
+            } catch (errore) {
+                alert("Errore di connessione con il server.");
             }
         }
 
