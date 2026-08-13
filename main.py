@@ -257,91 +257,62 @@ async def elimina_evento(
         return {"stato": "ERRORE", "messaggio": str(e)}
 
 
+
+
 # =========================================================================
-# 4. CHAT LIVE (WEBSOCKET & DB SECURITY)
+# 4. CHAT LIVE (SUPABASE CLOUD PERSISTENT)
 # =========================================================================
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     connessioni_attive.append(websocket)
-
-    db = SessionLocal()
+    
     try:
-        cronologia = db.query(MessaggioDB).order_by(MessaggioDB.data_invio.asc()).limit(50).all()
+        res = supabase.table("messaggi").select("*").order("created_at", desc=False).limit(50).execute()
+        cronologia = res.data if res.data else []
+        
         for msg in cronologia:
+            if isinstance(msg, dict):
+                mittente_val = str(msg.get("mittente", ""))
+                contenuto_val = str(msg.get("contenuto", ""))
+            else:
+                mittente_val = str(getattr(msg, "mittente", ""))
+                contenuto_val = str(getattr(msg, "contenuto", ""))
+            
             await websocket.send_text(json.dumps({
-                "mittente": msg.mittente,
-                "contenuto": msg.contenuto_criptato,
+                "mittente": mittente_val,
+                "contenuto": contenuto_val,
                 "storico": True
             }))
-    finally:
-        db.close()
+    except Exception as e:
+        print(f"Errore nel caricamento cronologia chat: {e}")
 
     try:
         while True:
             dati_ricevuti = await websocket.receive_text()
             payload = json.loads(dati_ricevuti)
-
-            tipo_azione = payload.get("azione", "messaggio")
+            
             mittente = payload.get("mittente", "").strip()
-            token = payload.get("token", "").strip()
-
-            if not mittente or not token:
+            contenuto = payload.get("contenuto", "").strip()
+            
+            if not mittente or not contenuto:
                 continue
 
-            db = SessionLocal()
             try:
-                utente = db.query(UtenteDB).filter(UtenteDB.nickname == mittente).first()
-
-                if utente is None:
-                    if tipo_azione == "registra_pin":
-                        pin = payload.get("pin", "")
-                        if len(pin) >= 4:
-                            nuovo_utente = UtenteDB(
-                                nickname=mittente,
-                                token=token,
-                                pin_hash=cifra_pin(pin)
-                            )
-                            db.add(nuovo_utente)
-                            db.commit()
-                            await websocket.send_text(json.dumps({"stato": "REGISTRATO", "info": "Nickname riservato con successo!"}))
-                        else:
-                            await websocket.send_text(json.dumps({"stato": "ERRORE_PIN", "info": "Il PIN deve essere di almeno 4 cifre!"}))
-                    else:
-                        await websocket.send_text(json.dumps({"stato": "RICHIEDI_CREAZIONE_PIN"}))
-                    continue
-
-                if utente.token != token:
-                    if tipo_azione == "verifica_pin":
-                        pin_inserito = payload.get("pin", "")
-                        if str(utente.pin_hash) == cifra_pin(pin_inserito):
-                            utente.token = token
-                            db.commit()
-                            await websocket.send_text(json.dumps({"stato": "SBLOCCATO", "info": "Dispositivo autorizzato!"}))
-                        else:
-                            await websocket.send_text(json.dumps({"stato": "ERRORE_PIN", "info": "PIN errato! Accesso negato."}))
-                    else:
-                        await websocket.send_text(json.dumps({"stato": "RICHIEDI_SBLOCCO_PIN"}))
-                    continue
-
-                if tipo_azione == "messaggio":
-                    contenuto = payload.get("contenuto", "").strip()
-                    if contenuto:
-                        nuovo_msg = MessaggioDB(mittente=mittente, contenuto_criptato=contenuto)
-                        db.add(nuovo_msg)
-                        db.commit()
-
-                        for connessione in connessioni_attive:
-                            await connessione.send_text(json.dumps({
-                                "mittente": mittente,
-                                "contenuto": contenuto,
-                                "storico": False
-                            }))
+                supabase.table("messaggi").insert({
+                    "mittente": mittente,
+                    "contenuto": contenuto
+                }).execute()
+                
+                for connessione in connessioni_attive:
+                    await connessione.send_text(json.dumps({
+                        "mittente": mittente,
+                        "contenuto": contenuto,
+                        "storico": False
+                    }))
             except Exception as e:
-                print(f"Errore nella gestione della richiesta WS: {e}")
-            finally:
-                db.close()
-
+                print(f"Errore nel salvataggio/invio messaggio WS: {e}")
+                    
     except WebSocketDisconnect:
         connessioni_attive.remove(websocket)
