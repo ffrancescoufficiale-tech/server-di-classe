@@ -61,18 +61,20 @@
             formData.append('tipo', 'normale'); // Indica que es público
             formData.append('file', document.getElementById('file').files[0]);
 
-            try {
-                const risp = await fetch('https://server-di-classe-backend.onrender.com', { method: 'POST', body: formData });
-                const dati = await risp.json();
-                if(dati.stato === "OK") {
-                    alert("Appunto condiviso con la classe!");
-                    window.location.href = "appunti_normali_scelta.html"; // Redirige al menú de opciones
-                } else {
-                    alert(dati.messaggio);
-                }
-            } catch {
-                alert("Errore di connessione con il server.");
-            }
+ try {
+    const risp = await fetch('https://server-di-classe-backend.onrender.com', { method: 'POST', body: formData });
+    const dati = await risp.json();
+    console.log("STATUS:", risp.status, "BODY:", dati);  // <-- aggiungi questa riga
+    if(dati.stato === "OK") {
+        alert("Appunto condiviso con la classe!");
+        window.location.href = "appunti_normali_scelta.html";
+    } else {
+        alert(dati.messaggio || JSON.stringify(dati));  // <-- mostra tutto se manca messaggio
+    }
+} catch (err) {
+    console.error(err);
+    alert("Errore di connessione con il server.");
+}
         });
     </script>
 </body>
