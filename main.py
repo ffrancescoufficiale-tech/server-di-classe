@@ -139,11 +139,13 @@ async def carica_appunto(
         # 1. Carica il file binario nel bucket Storage di Supabase
         supabase.storage.from_("appunti-files").upload(
             path=nome_unico_file,
-            file=contenuto_file
-        )
+            file=contenuto_file,
+            file_options={"content-type": file.content_type or "application/octet-stream"}
+)
 
         # 2. Ottieni l'URL pubblico del file
         url_res = supabase.storage.from_("appunti-files").get_public_url(nome_unico_file)
+        print("DEBUG url_res:", repr(url_res), type(url_res))  # rimuovilo dopo il debug
 
         # 3. Salva i metadati nel database SQL di Supabase
         supabase.table("files_salvati").insert({
