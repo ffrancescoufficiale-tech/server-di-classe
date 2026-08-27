@@ -142,12 +142,12 @@
             document.getElementById('messaggio-benvenuto').textContent = "Cosa vuoi fare oggi?";
         }
         if ('serviceWorker' in navigator) {
-             window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js')
-            .then(() => console.log('PWA Service Worker registrato!'))
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/server-di-classe/sw.js', { scope: '/server-di-classe/' })
+            .then((reg) => console.log('PWA Service Worker registrato con successo!', reg.scope))
             .catch((err) => console.log('Errore Service Worker:', err));
         });
-}
+        }
     </script>
 </body>
 </html>
