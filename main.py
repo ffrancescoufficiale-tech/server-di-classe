@@ -7,9 +7,19 @@ import os
 import time
 from database import inizializza_db, SessionLocal, MessaggioDB, UtenteDB, cifra_pin
 from supabase import create_client, Client
-
+from fastapi.responses import FileResponse
 app = FastAPI()
+@app.get("/manifest.json")
+async def get_manifest():
+    return FileResponse("manifest.json")
 
+@app.get("/sw.js")
+async def get_sw():
+    return FileResponse("sw.js", media_type="application/javascript")
+
+@app.get("/icon.png")
+async def get_icon():
+    return FileResponse("icon.png")
 # =========================================================================
 # CONFIGURAZIONE SUPABASE
 # =========================================================================
