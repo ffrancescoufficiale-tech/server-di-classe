@@ -8,6 +8,7 @@ import time
 from database import inizializza_db, SessionLocal, MessaggioDB, UtenteDB, cifra_pin
 from supabase import create_client, Client
 from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException
 app = FastAPI()
 @app.get("/manifest.json")
 async def get_manifest():
@@ -30,7 +31,14 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY") or "sb_publishable_bkFPdaZx-LRYlSK
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 BUCKET_NAME = "appunti-files"
-
+@app.get("/health-supabase")
+async def health_supabase():
+    try:
+        # Query semplice e pulita che sveglia Supabase senza argomenti complessi
+        response = supabase.table("eventi").select("*").limit(1).execute()
+        return {"status": "online", "supabase": "connected"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 @app.get("/")
 async def home_test():
     return {"messaggio": "Il server funziona ed è il file corretto!"}
